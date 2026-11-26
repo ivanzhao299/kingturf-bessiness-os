@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45与写冒烟六流程，保留旧133图目检、每视口五次抽屉探针错误和R/B扫描阻断。§3.2 补 TD-TEST-040：production Web／test API 双视口各45/45、23真抽屉+3筛选、49文件哈希不变、148图目检和精确清理，保留空OPEN／催收详情／受限角色等边界及TD-UI-024观察。§5 记录 TD-GATE-007 同源码构建因果、production全49文件与实际镜像原字节匹配及775445d；§6 记录仅修订两份封装的新 R `32e705a`、L业务源码与81清单保真。§7 记录c3f1239完整CI退出0（API18,387／Web1,064／operations261、49production文件全等）、main快进及新R run45811774272双扫描通过但OCI导出权限失败。最终B的production浏览器、成功新R原物料、真实恢复与生产发布仍待后继证据。
+[2026-11-26 业务波次集成验收](evidence/ux-wave-integration-2026-11-26.md) 记录 `514d8f4` 完整 CI（API 18,387、Web 1,064、UI 101）、test 构建上的 P1 三轮各 11/11、双视口路由各 45/45与写冒烟六流程，保留旧133图目检、每视口五次抽屉探针错误和R/B扫描阻断。§3.2 补 TD-TEST-040：production Web／test API 双视口各45/45、23真抽屉+3筛选、49文件哈希不变、148图目检和精确清理，保留空OPEN／催收详情／受限角色等边界及TD-UI-024观察。§5 记录 TD-GATE-007 同源码构建因果、production全49文件与实际镜像原字节匹配及775445d；§6 记录仅修订两份封装的新 R `32e705a`、L业务源码与81清单保真。§7 记录c3f1239完整CI退出0（API18,387／Web1,064／operations261、49production文件全等）、main快进及新R run45811774272双扫描通过但OCI导出权限失败。§8 记录GLM审查通过的目录批a5ff13b合入、115工具例和23修复SHA祖先核对；§7.1更正轻量文档检查的cwd并保留显式重验回执。最终B的production浏览器、成功新R原物料、真实恢复与生产发布仍待后继证据。
 
 [TD-REL-015 运行镜像最小封装](exec-plans/tech-debt-tracker.md)及 [forward-recovery 证据 §13](evidence/forward-recovery-2026-11-26.md#13-运行镜像最小封装td-rel-015)记录先登记后修复的 API／Web 独立提交、原 65／58 项 HIGH+ 阻断、最终完整扫描与 HC 门均 0、`158baf6` 冻结、本机 OCI 摘要与完整报告、production／B0 静态字节全等、原 CLI81／TLS／UID0与1000附件／写闸／PID1／SIGTERM／BusyBox 健康命令实测；保留全部失败和构建工具边界，真实 GHR／恢复与集成验收归主协调。
 

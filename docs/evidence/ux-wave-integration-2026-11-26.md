@@ -157,4 +157,14 @@ P1 三轮先执行，写流程最后执行，避免信用写数据改变 P1 固�
 
 新 R 通过现有 `release-images.yml`、ref main，以完整R SHA明确调度，固定导出控制为c3f1239：[run 45811774272，attempt1](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45811774272)。本轮真实完成API/Web构建推送、tag与digest核对、双HIGH/CRITICAL扫描、SBOM和不可变digest输出，之后在 **Export original recovery bytes and offline source** 步骤退出1：`GATE_FAILED:recovery_transport: [Errno 1] Operation not permitted: '/tmp/recovery-export-jhfxpy8o/oci/web'`。Retain步骤未执行，整体run为failure，不能消费其已推镜像作为成功approved恢复物料。
 
-本轮观察到的API根摘要为 `sha256:61a7914363f8ab34e5391296cc9209fa6e3a31352089c20dc0fef1167d7f5d20`，Web为 `sha256:be9cff07190d2b4cdb7b2110f365c58937aeccc7b6c37a6396b9991413ea2af0`。调度、run/job最终JSON、完整job原日志和watch回执保留在 `integration-artifacts/image-builds-32e705a/`（job139881174681，错误约R-job.log:2826）。物料导出目录的权限/归属根因仍待独立定位，主协调已授权另批TD-REL-016先登记、后单独修复；不修改R业务源或放宽成功来源门。两层真实恢复、认证写、最终B/C材料与生产发布均未执行。
+本轮观察到的API根摘要为 `sha256:61a7914363f8ab34e5391296cc9209fa6e3a31352089c20dc0fef1167d7f5d20`，Web为 `sha256:be9cff07190d2b4cdb7b2110f365c58937aeccc7b6c37a6396b9991413ea2af0`。调度、run/job最终JSON、完整job原日志和watch回执保留在 `integration-artifacts/image-builds-32e705a/`（job139881174681，错误约R-job.log:2826）。另批TD-REL-016已先登记为 `2eb8f814fcf13f60e111946e2941b50733904d8a`。独立实施者以原固定Skopeo镜像和自有bind实测复现：copy成功后目录为root的0:0/0755，runner清理先遇unlink EACCES，再在resetperms chmod web目录时EPERM，与本轮调用链和末错误相同；GHR临时目录已消失，未冒称取得该目录现场stat。修复只拟对齐Skopeo写入UID/GID与实际runner，另附测试，不改R业务源或放宽成功来源门。两层真实恢复、认证写、最终B/C材料与生产发布均未执行。
+
+### 7.1 轻量文档检查的工作目录更正
+
+此前若干直接以绝对脚本路径调用doc-lint的轻量检查，进程实际工作目录是主检出；不能把它们计作当时集成合并树的文档通过证据。主协调已在干净 `710f72fc65e495a38a0d403b444c07a12680ba5b` 上显式指定集成目录，重跑 `pnpm doc:lint` 和 `pnpm format:check`，二者退出0，HEAD与受跟踪树不变，完整原始日志及各自摘要在 `integration-artifacts/doc-check-710f72f/`。第2节及本节完整CI启动器一直显式设置对应被测工作树的cwd，其完整回执和生产构建字节不受本次轻量调用口径更正影响。后继轻量命令使用 `pnpm --dir <集成树>` 或显式cwd。
+
+## 8. 指定 GLM 工作流的冒烟目录批已集成
+
+指定工作流的TD-TEST-029已经完成开发、确定性门禁及GLM-5.4审查并提交：工具 `f54d72f86e075e36e4f91b38df18c7e1e4c9081a`、证据 `aa1160445957b92125cee9019037354267994848`。主协调只读复核完整代码差异和四轮审查记录后，合入 `a5ff13b1b5fc314c3dd3698c2be38af68887f7bf`；保留两边工具测试、发布摘要／预算守卫及production构建，所有者裁定仍为台账第一节，既有TD-WEB-016盘查状态不被旧分支覆盖。没有修改仍在执行的供应商初焦任务，开发模型和审查模型保持用户指定配置。
+
+同一干净合并快照的根 `test:session-network-tools` **115/115、零skip、退出0**，前后HEAD和受跟踪树不变；完整检出的fixing-commit探针核对24条、23条完整SHA祖先全部成立、1条无单独修复提交、核对失败0。回执在 `integration-artifacts/catalog-a5ff13b/`，工具日志SHA-256为 `4c423f4e1dd8e50c72df5893edf6bfe7db88d38bb9eb8fea3be5f343b4df0299`。这是合并后定向回执，不能拿第7节c3的完整CI替代新增源码后的最终完整CI；浏览器四轮、浅克隆和Node24.1兼容等分支证据详见[目录批证据](smoke-catalog-fixed-in-2026-11-26.md)。
