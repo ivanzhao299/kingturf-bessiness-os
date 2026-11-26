@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[C1完整CI与第二层首次停止](evidence/forward-recovery-2026-11-26.md#22-c1-完整-ci-与第二层首次停止)：固定C1为5ab1cea，完整CI0／943.7秒、49production字节与B相同，已非force推main；automatic4材料门后完整恢复原77，原applied_at全等，L是在77恢复后才启动。进入C apply前停止并留闸／停已绑定API；确定外部driver缺Docker healthy等待（TD-REL-021先登记），具体断言瞬时容器未唯一取证。保留原失败、C1及首层原件，后继对照／R81复位／新attempt另验，生产未部署。
+
 [首层真实恢复成功与C1材料准备](evidence/forward-recovery-2026-11-26.md#21-首层真实恢复成功与-c1-材料准备)：manual3实际完成77→81原R CLI、B故障切换、R带闸启动／解闸／认证POST201与GET200，原77含applied_at及恢复前后状态文件保持；原报告06c680ae…与完整77联合快照已核。四production selection＋独立演练descriptor已生成，真实材料门0，报告保留C0原字节。TD-REL-020仅登记探针status键覆盖的记录表示缺口，未修改driver／报告；C1完整CI、第二层及生产发布另验。
 
 [首层第二次尝试的TLS前置停止](evidence/forward-recovery-2026-11-26.md#20-首层第二次尝试的-tls-前置停止)：v3实际进入worker，R/B原物料导入与L77完整预检通过；在启闸／停机／迁移前因已有443监听停止，scene_changed=false、步骤为空。只读核PID6632的ticks／argv／cwd／脚本摘要／socket及初始日志FD，启动约08:13 UTC，早于本轮16:10；不是manual2新代理。原失败与诊断保留，未据CI、标准smoke或路径修复宣称真实恢复通过。
