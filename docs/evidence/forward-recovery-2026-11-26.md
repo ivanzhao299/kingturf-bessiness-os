@@ -466,3 +466,13 @@ R3实际0567入口在独立PG／API镜像只读连接成功后被地址字符串
 新夹具只改共享SQL一处表达式，所有其余AST、严格裸IP／端口／实例／库／角色与资源门保持。冻结1ff1802b2fb69ac78c1afc9437663dbdf884cb53821604dde6ba5050886af29f，原37／5／13共55例显式加载全部通过，R/B静态输入门均81 SQL／40 OCI。首次unittest discover对带连字符文件名运行0例，被调用器拒绝；两次真实SQL诊断的嵌套引号语法错误发生在执行前，修正后先compile再调用，原失败说明与清理核账保留。
 
 独立只读核对发现尚未实跑的旧冻结worker也用inet::text，并在第249行与Docker裸IPAddress比较；第248行两SQL端相等不能解除该不一致，原第87行合成夹具直接给裸地址。该结论为静态核对，不能冒称旧driver已经实际失败。主协调先登记TD-REL-018，再保留四份旧冻结源码／摘要、仅修worker共享SQL地址表达式并新建版本冻结；标准夹具仅同步引用该新worker摘要，另做回归与独立复核。五份生产C0 controls、业务、迁移SQL与B/R原物料均保持，所有实跑使用的版本分别记账，不重写旧冻结或旧失败。
+
+状态：先登记3567e6b后完成v2，worker SHA为14182d18dfabff4f95a3f4c2e552b2e7d888d24f39346d2280110acef4e135c6，其他三文件同v1；旧四文件原字节留存在recovery-rehearsal-driver-v1-freeze。原21纯边界零skip全过、其他AST不变，独立复核后promote。标准夹具同步worker摘要为fd925748ab3ea5933d8a56e4042c5a998068edb5c34abe1fde20ceecf1cf3cee，55回归通过。R5与B2在15:35:22／15:35:39 UTC分别实际OBSERVED_SUCCESS：原helper0、81登记、L77未变、资源及端口全清；此前v6的R4/B1成功原件也保持。首层manual1随后在脚本复制阶段停止，见§19，不能用标准smoke替代首层。
+
+## 19. 可信脚本根归档复制的可见性
+
+首层manual1（45841385764-1-manual）15:37:44–15:37:45 UTC停止于launcher第一份脚本复制；尚未STARTING或执行worker。只读复核binding、真实SPEC、C0对象／历史和harness均通过，本地五controls已导出；outer的exec视角中/tmp/kt-recovery-controller/本轮目录及controls实际存在，output仅有空inputs目录。对第一份源contract脚本实际重试复制并记录Docker错误：Could not find the file /tmp/kt-recovery-controller/本轮目录。未把失败解释成控制字节或应用镜像失败。
+
+在新自有/run/kt-recovery-copy-probe目录用同源contract脚本、同完整outer ID实际Docker cp退出0，容器内SHA与源5f559c2e…一致；仅可信脚本数据复制，无应用／数据库操作。两种视角、原停止及对照回执在integration-artifacts/rehearsal-invocations/45841385764-1-manual/，原目录保留，不复用该attempt。
+
+主协调先登记TD-REL-019，再仅将launcher的可信根与worker精确根守卫同步移为/run/kt-recovery-controller，保留原v2快照后建立v3；标准夹具的两个摘要引用和调用器对应绑定同步更新，回归、独立复核后新attempt实跑。此为同批测试暂存路径适配，五生产controls、B/R原件、材料／身份／清理门不变；不通过改权限或放宽路径条件凑成功，不把目录探针当恢复报告。

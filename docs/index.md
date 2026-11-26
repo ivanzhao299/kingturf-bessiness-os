@@ -1,5 +1,7 @@
 # docs/index.md（全部文档索引）
 
+[演练脚本根复制可见性（TD-REL-019）](evidence/forward-recovery-2026-11-26.md#19-可信脚本根归档复制的可见性)：v2及对应R5/B2标准smoke均通过；首层manual1尚未进入worker即被/tmp脚本复制拒绝，exec可见目录但Docker cp不可见。同脚本向新私有/run目录复制0且字节相同；先登记后只同步launcher/worker精确可信根，新attempt再验，旧停止与v2留存。
+
 [演练端点地址表示与driver版本（TD-REL-018）](evidence/forward-recovery-2026-11-26.md#18-端点地址表示与外部-driver-版本修订)：R3 API镜像只读连接0但inet::text带/32被裸IP比较拒绝，资源全清、L77不变；实际PG17只读对照host()保持其他身份字段，标准夹具55回归通过。冻结worker存在同型静态比较，先保存旧四文件、登记后做一行SQL版本修订，生产五controls与B/R原件不变，不冒称旧driver实际失败。
 
 [生产与演练descriptor分别固定（TD-REL-017）](evidence/forward-recovery-2026-11-26.md#17-生产与演练-descriptor-的分别固定)：同目录production report路径与driver的B命名空间／Git原字节门不同，先登记后通过现存material_git_paths显式选择独立演练descriptor；production四selection保留，五controls／四driver不改。报告保留真实manual原字节，未预生成批准或PASS。
