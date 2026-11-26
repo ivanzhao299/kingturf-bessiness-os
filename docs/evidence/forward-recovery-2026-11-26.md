@@ -211,3 +211,13 @@ R 作为实际健康原应用进行下一次零 pending 的 B 重试时，不消
 新增三组测试覆盖九种范围异常：错 Name、错 project、错 service、缺 labels、附件错源/错目标/volume 类型/缺失/重复；分别验证 preserved 原源、批准 B/R、手工 forward 原源和候选。旧实现实跑 57 项时，这 45 个新增子情形全部失败；修复后同类 **57/57** 通过，所有异常均零停止，失败清理保留持久闸。日志 `scope-red.log`、`scope-green.log` 保留。Docker/HTTP 仍是明确替身，不充真实镜像恢复证据。
 
 包含第 8、9 节后，Python 发布/操作全套最终 **205/205** 通过（28.728 秒，无跳过；真实 PostgreSQL 演练最终 77 条 FULLY_MATCHED），日志 `operations-scope-final.log`。structure/service/lint/typecheck/bash 最终复验退出 0，lint 仍仅原两条 warning，日志 `static-scope-final.log`。本树保持 77 条，完整 ci:local 与真实 81 清单镜像恢复的验收归主协调；不将这些控制测试当作该验收。
+
+## 10. 主协调的 81 清单集成复验
+
+主协调合入最终恢复控制 `7795017`、材料传输 `8a0deae` 和 R 的最终 81 条钉定后，在干净提交 `22a546df61cdc8da3cc735659890bae1259ad195` 执行完整 `pnpm ci:local`。该轮于 2026-11-26 08:47:30–08:50:36 UTC 真实退出 1；前置格式、文档、结构、依赖边界、能力清单、数据库 guard/migrate/status、lint 和 typecheck 通过，随后在发布运维测试处停止，尚未进入 API/Web 覆盖率及后续构建检查。242 项运维测试有 7 项失败、15 项报错，首先触发 `Candidate migration manifest binding invalid`：两份新增恢复夹具仍只构造 77 条，而生产控制正确要求 81 条。失败日志和干净树回执保留于 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/ci-22a546d/`，不覆盖、不改标为通过。
+
+独立测试修正 `93af1e1da1f76a1b2683e485ae847252454df9b6` 只改两份夹具：失败来源清单改为 81 条；兼容应用夹具明确保留 L 的 77 条真实 Git 文件，再由 R 追加 0078–0081 四条，并同步批准后缀。原日志解析的 `0077_fixture.sql` 负例、普通 B 失败选 R、R 失败留闸、替换竞态及范围拒绝断言均保留；生产控制、严格计数和迁移字节未改。
+
+在上述干净提交上，主协调以回环 `5438/kingturf_test_coordrel`、`kingturf` 角色经 heavy 串行执行完整 `python3 -m unittest discover -s tests/operations -p '*_test.py'`：**242/242 通过、零 skip，测试耗时 39.125 秒，退出 0**。前后 HEAD 相同、受跟踪工作树干净。原始日志、SHA-256 与结果在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/operations-93af1e1/`，其中日志摘要为 `a63cad8d5706d1291a5477d4a6eb46e7ba661744020341170e4b47679c2c91f9`。
+
+该回执只证明最终同树运维测试通过。新的完整 CI、R 原镜像物料、两层真实恢复及恢复后认证写仍须分别实跑；没有据此解除 TD-REL-011 的发布阻断。
