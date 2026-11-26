@@ -34,8 +34,8 @@ describe('production startup migration gate', () => {
     const files = readdirSync(migrations)
       .filter((name) => /^\d+.*\.sql$/u.test(name))
       .sort();
-    if (files.length !== 79)
-      throw new Error(`expected 79 candidate migrations, found ${String(files.length)}`);
+    if (files.length !== 81)
+      throw new Error(`expected 81 candidate migrations, found ${String(files.length)}`);
     const filtered = mkdtempSync(join(tmpdir(), 'kingturf-startup-gate-'));
     for (const name of files.slice(0, 70))
       copyFileSync(join(migrations, name), join(filtered, name));
@@ -66,6 +66,8 @@ describe('production startup migration gate', () => {
       '0077_po_partial_receipt_transition.sql',
       '0078_manufacturing_published_child_insert_guard.sql',
       '0079_bom_requires_published_components.sql',
+      '0080_po_draft_cancel.sql',
+      '0081_po_mrp_proposal_reference.sql',
     ]);
   });
 

@@ -24,7 +24,7 @@ ro = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ro)
 MIGRATIONS = ROOT / 'packages/database/migrations'
 REAL_FILES = sorted(MIGRATIONS.glob('[0-9][0-9][0-9][0-9]*.sql'))
-assert len(REAL_FILES) == 79, 'candidate migration set must have exactly 79 files'
+assert len(REAL_FILES) == 81, 'candidate migration set must have exactly 81 files'
 
 # Drills without a host psql client reach PostgreSQL through `docker exec`. The
 # container follows DATABASE_URL so the Python side and the Node reference migrator
@@ -180,7 +180,7 @@ class ControlledUpgradeDrill(Drill):
         session = self.make_db('phase12c_drill_upgrade')
         state = self.run_execute(session)
         self.assertEqual(state['verdict'], 'COMPLETED')
-        self.assertEqual(len(self.registry_names(session)), 79)
+        self.assertEqual(len(self.registry_names(session)), 81)
         admin = admin_session()
         try:
             admin.query('DROP DATABASE IF EXISTS phase12c_drill_reference')
