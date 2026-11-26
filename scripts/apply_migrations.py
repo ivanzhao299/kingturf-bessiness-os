@@ -25,7 +25,6 @@ from datetime import datetime, timedelta, timezone
 SUFFIX_RE = re.compile(r'^[0-9]{4}_[a-z0-9_]+\.sql$')
 SHA_RE = re.compile(r'^[0-9a-f]{40}$')
 HEALTH = 'http://127.0.0.1:4332/health'
-PROJECT = 'kingturf-erp-production'
 DRAIN_INFLIGHT_CUTOFF_DAYS = 7
 
 
@@ -308,18 +307,27 @@ def compose(prod_root, *args):
                    timeout=180)
 
 
+def api_environment(container):
+    values = {}
+    for entry in container['Config']['Env']:
+        name, separator, value = entry.partition('=')
+        require(separator and name and name not in values, 'API environment contains an invalid or duplicate key')
+        values[name] = value
+    return values
+
+
 def api_identity(container):
-    return (container['Id'], container['Image'], container['Config']['Image'], tuple(container['Config']['Env']))
+    return (container['Id'], container['Image'], container['Config']['Image'], tuple(sorted(api_environment(container).items())))
 
 
 def observe_api(attachments_dir):
-    values = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))
+    spec = importlib.util.spec_from_file_location('apply_preflight', Path(__file__).with_name('production_preflight.py'))
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+    values = json.loads(command(['docker', 'inspect', gate.PROJECT+'-api-1']))
     require(len(values) == 1, 'API source is ambiguous')
     container = values[0]
-    labels = container.get('Config', {}).get('Labels') or {}
-    require(container.get('Name') == '/'+PROJECT+'-api-1' and isinstance(labels, dict) and labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == 'api', 'API scope canonical name or Compose project/service mismatch')
-    mounts = [m for m in container.get('Mounts', []) if m.get('Destination') == '/var/lib/kingturf/attachments']
-    require(len(mounts) == 1 and mounts[0].get('Type') == 'bind' and mounts[0].get('Source') == str(attachments_dir), 'API scope attachment bind mismatch')
+    gate.require_api_scope(container, attachments_dir)
     require(re.fullmatch(r'[0-9a-f]{64}', container['Id']) and re.fullmatch(r'sha256:[0-9a-f]{64}', container['Image']), 'API source requires full immutable container/image IDs')
     return container
 
@@ -417,8 +425,9 @@ def main():
 
             step = 'write-fence'
             api_binding = observe_api(args.attachments_dir)
+            original_environment = api_environment(api_binding)
             api_sha = (args.prod_root / '.release-sha').read_text().strip()
-            require([v for v in api_binding['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')] == ['KINGTURF_RELEASE_SHA='+api_sha], 'API source release differs from marker')
+            require(original_environment.get('KINGTURF_RELEASE_SHA') == api_sha, 'API source release differs from marker')
             t_fence = iso(utcnow())
             env_path = args.prod_root / '.env.production'
             env_path.write_text(enable_fence_text(env_path.read_text()))
@@ -426,7 +435,7 @@ def main():
             compose(args.prod_root, 'up', '-d', '--no-deps', '--pull', 'never', 'api')
             time.sleep(8)
             fenced = observe_api(args.attachments_dir)
-            require(fenced['Image'] == api_binding['Image'] and fenced['Config']['Image'] == api_binding['Config']['Image'] and [v for v in fenced['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')] == ['KINGTURF_RELEASE_SHA='+api_sha], 'API source changed while enabling fence')
+            require(fenced['Image'] == api_binding['Image'] and fenced['Config']['Image'] == api_binding['Config']['Image'] and api_environment(fenced) == {**original_environment, 'KINGTURF_WRITE_FENCE': 'enabled'}, 'API source changed while enabling fence')
             require(fenced['State'].get('Running') and not fenced['State'].get('Restarting') and [v for v in fenced['Config']['Env'] if v.startswith('KINGTURF_WRITE_FENCE=')] == ['KINGTURF_WRITE_FENCE=enabled'], 'Actual fenced API observation missing')
             api_binding = fenced  # Compose may legitimately recreate it: bind the actual new full ID.
             require(http_status('/health') == 200, 'fenced API health probe did not return 200')

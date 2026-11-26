@@ -302,7 +302,8 @@ class ApiStopBindingTest(unittest.TestCase):
                        'Image': 'sha256:'+'3'*64,
                        'Config': {'Image': 'fixture/api@sha256:'+'3'*64,
                                   'Labels': {'com.docker.compose.project': 'kingturf-erp-production', 'com.docker.compose.service': 'api'},
-                                  'Env': ['KINGTURF_RELEASE_SHA='+'a'*40, 'KINGTURF_WRITE_FENCE=disabled']},
+                                  'Env': ['KINGTURF_RELEASE_SHA='+'a'*40, 'KINGTURF_WRITE_FENCE=disabled',
+                                          'DATABASE_URL=synthetic-owned-database', 'SESSION_SECRET=synthetic-session-secret']},
                        'Mounts': [{'Type': 'bind', 'Source': str(attachments), 'Destination': '/var/lib/kingturf/attachments'}],
                        'State': {'Running': True, 'Restarting': False}}
             current = copy.deepcopy(initial)
@@ -329,7 +330,7 @@ class ApiStopBindingTest(unittest.TestCase):
                 if args[0] == 'up':
                     retired[current['Id']] = copy.deepcopy(current)
                     current['Id'] = '4'*64
-                    current['Config']['Env'] = ['KINGTURF_RELEASE_SHA='+'a'*40, 'KINGTURF_WRITE_FENCE=enabled']
+                    current['Config']['Env'] = ['KINGTURF_WRITE_FENCE=enabled' if value.startswith('KINGTURF_WRITE_FENCE=') else value for value in current['Config']['Env']]
                     if after_up:
                         after_up(current)
                 elif args[0] == 'stop':
@@ -354,6 +355,7 @@ class ApiStopBindingTest(unittest.TestCase):
                     '--approved-suffixes', '0002_next.sql', '--staged-root', str(staged),
                     '--approver', 'fixture', '--prod-root', str(prod),
                     '--attachments-dir', str(attachments), '--expected-before', '1', '--expected-after', '2']
+            output = io.StringIO()
             with mock.patch.object(sys, 'argv', argv), \
                  mock.patch.object(am, 'command', side_effect=docker), \
                  mock.patch.object(am, 'compose', side_effect=compose), \
@@ -361,13 +363,13 @@ class ApiStopBindingTest(unittest.TestCase):
                  mock.patch.object(am, 'http_status', side_effect=probe), \
                  mock.patch.object(am, 'require_zero', side_effect=RuntimeError('verified stop boundary')), \
                  mock.patch.object(am, 'restore_api_on_failure', side_effect=restored) as restore, \
-                 mock.patch.object(am.time, 'sleep'), contextlib.redirect_stdout(io.StringIO()):
+                 mock.patch.object(am.time, 'sleep'), contextlib.redirect_stdout(output):
                 with self.assertRaises(SystemExit) as exit_status:
                     am.main()
             self.assertEqual(exit_status.exception.code, 1)
             return {'stops': stops, 'running': current['State']['Running'], 'id': current['Id'],
                     'restores': restore.call_count, 'compose': compose_calls,
-                    'observations': observations, 'fence': env.read_text()}
+                    'observations': observations, 'fence': env.read_text(), 'output': output.getvalue()}
 
     def test_replacement_after_fenced_probe_is_not_stopped_or_restored(self):
         result = self.flow(after_probe=lambda current, replace: replace())
@@ -413,6 +415,32 @@ class ApiStopBindingTest(unittest.TestCase):
                 self.assertEqual(result['restores'], 0)
                 self.assertTrue(result['running'])
                 self.assertIn('KINGTURF_WRITE_FENCE=enabled', result['fence'])
+
+    def test_fence_recreation_preserves_all_environment_except_the_fence(self):
+        for mutation in ('DATABASE_URL', 'SESSION_SECRET', 'extra', 'missing', 'duplicate'):
+            with self.subTest(mutation=mutation):
+                def changed(current):
+                    values = current['Config']['Env']
+                    if mutation in ('DATABASE_URL', 'SESSION_SECRET'):
+                        current['Config']['Env'] = [mutation+'=changed-secret-value-do-not-log' if value.startswith(mutation+'=') else value for value in values]
+                    elif mutation == 'extra':
+                        values.append('UNAPPROVED=changed-secret-value-do-not-log')
+                    elif mutation == 'missing':
+                        current['Config']['Env'] = [value for value in values if not value.startswith('SESSION_SECRET=')]
+                    else:
+                        values.append('DATABASE_URL=changed-secret-value-do-not-log')
+                result = self.flow(after_up=changed)
+                self.assertEqual(result['stops'], [])
+                self.assertEqual(result['restores'], 0)
+                self.assertTrue(result['running'])
+                self.assertIn('KINGTURF_WRITE_FENCE=enabled', result['fence'])
+                for secret in ('changed-secret-value-do-not-log', 'synthetic-owned-database', 'synthetic-session-secret'):
+                    self.assertNotIn(secret, result['output'])
+
+    def test_fence_recreation_accepts_environment_reordering(self):
+        result = self.flow(after_up=lambda current: current['Config']['Env'].reverse())
+        self.assertEqual(result['stops'], ['4'*64])
+        self.assertEqual(result['restores'], 1)
 
     def test_fence_recreation_must_preserve_the_original_image_and_release(self):
         for field in ('Image', 'release'):

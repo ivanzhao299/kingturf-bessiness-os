@@ -23,6 +23,14 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
+def require_api_scope(container, attachments):
+    """Pure stop-scope predicate shared by the fixed application and apply controls."""
+    labels = container.get('Config', {}).get('Labels') or {}
+    require(container.get('Name') == '/'+PROJECT+'-api-1' and isinstance(labels, dict) and labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == 'api', 'API scope canonical name or Compose project/service mismatch')
+    mounts = [m for m in container.get('Mounts', []) if m.get('Destination') == '/var/lib/kingturf/attachments']
+    require(len(mounts) == 1 and mounts[0].get('Type') == 'bind' and mounts[0].get('Source') == str(attachments), 'API scope attachment bind mismatch')
+
+
 def command(args, *, text=None):
     result = subprocess.run(args, input=text, capture_output=True, text=True, timeout=30)
     require(result.returncode == 0, 'Required read-only inventory command failed')

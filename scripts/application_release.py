@@ -264,10 +264,8 @@ def forward_prepared(bundle, approval):
 
 
 def require_api_scope(container):
-    labels = container.get('Config', {}).get('Labels') or {}
-    images.require(container.get('Name') == '/'+PROJECT+'-api-1' and isinstance(labels, dict) and labels.get('com.docker.compose.project') == PROJECT and labels.get('com.docker.compose.service') == 'api', 'API scope canonical name or Compose project/service mismatch')
-    mounts = [m for m in container.get('Mounts', []) if m.get('Destination') == '/var/lib/kingturf/attachments']
-    images.require(len(mounts) == 1 and mounts[0].get('Type') == 'bind' and mounts[0].get('Source') == str(load_gate().ATTACHMENTS), 'API scope attachment bind mismatch')
+    gate = load_gate()
+    gate.require_api_scope(container, gate.ATTACHMENTS)
 
 
 def same_failed_api(container, source):
