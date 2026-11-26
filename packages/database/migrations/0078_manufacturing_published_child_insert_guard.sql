@@ -6,7 +6,8 @@
 -- 本迁移做两件事，其余都不动：
 --   1. 重定义 protect_published_manufacturing_child：以 0036 的定义为底本（0036 之后没有任何
 --      迁移重定义过它），只在前面增加 INSERT 分支——父版本（替代料取其所属行项的版本）已发布
---      即拒绝；UPDATE / DELETE 分支的检查、顺序与报错文字与 0036 逐字一致
+--      即拒绝；读父版本时取 FOR SHARE，持锁到事务结束，让并发发布等待插入提交，或让插入
+--      等待发布提交后重新检查已发布状态。UPDATE / DELETE 分支逐字不变
 --      （packages/database/test/migrations.test.ts 机械比对）。
 --   2. 三个冻结触发器改为 BEFORE INSERT OR UPDATE OR DELETE。触发器只能整体重建（PostgreSQL
 --      没有「改事件」的语句），名称、表、函数与行级粒度不变。
@@ -17,9 +18,9 @@ CREATE OR REPLACE FUNCTION protect_published_manufacturing_child() RETURNS trigg
 DECLARE published boolean;
 BEGIN
   IF TG_OP='INSERT' THEN
-    IF TG_TABLE_NAME='manufacturing_bom_lines' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_versions v WHERE v.id=NEW.bom_version_id AND v.tenant_id=NEW.tenant_id;
-    ELSIF TG_TABLE_NAME='manufacturing_bom_substitutes' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_lines l JOIN manufacturing_bom_versions v ON v.id=l.bom_version_id AND v.tenant_id=l.tenant_id WHERE l.id=NEW.bom_line_id AND l.tenant_id=NEW.tenant_id;
-    ELSE SELECT v.status='PUBLISHED' INTO published FROM manufacturing_routing_versions v WHERE v.id=NEW.routing_version_id AND v.tenant_id=NEW.tenant_id; END IF;
+    IF TG_TABLE_NAME='manufacturing_bom_lines' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_versions v WHERE v.id=NEW.bom_version_id AND v.tenant_id=NEW.tenant_id FOR SHARE;
+    ELSIF TG_TABLE_NAME='manufacturing_bom_substitutes' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_lines l JOIN manufacturing_bom_versions v ON v.id=l.bom_version_id AND v.tenant_id=l.tenant_id WHERE l.id=NEW.bom_line_id AND l.tenant_id=NEW.tenant_id FOR SHARE OF v;
+    ELSE SELECT v.status='PUBLISHED' INTO published FROM manufacturing_routing_versions v WHERE v.id=NEW.routing_version_id AND v.tenant_id=NEW.tenant_id FOR SHARE; END IF;
     IF published THEN RAISE EXCEPTION 'published manufacturing versions are immutable, child rows cannot be added, continue with a new draft version instead'; END IF;
     RETURN NEW;
   END IF;

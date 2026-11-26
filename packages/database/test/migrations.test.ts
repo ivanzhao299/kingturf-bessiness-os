@@ -137,9 +137,9 @@ describe('identity and authorization migration', () => {
     expect(definition.split(anchor)).toHaveLength(2);
     const insertBranch = [
       "  IF TG_OP='INSERT' THEN",
-      "    IF TG_TABLE_NAME='manufacturing_bom_lines' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_versions v WHERE v.id=NEW.bom_version_id AND v.tenant_id=NEW.tenant_id;",
-      "    ELSIF TG_TABLE_NAME='manufacturing_bom_substitutes' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_lines l JOIN manufacturing_bom_versions v ON v.id=l.bom_version_id AND v.tenant_id=l.tenant_id WHERE l.id=NEW.bom_line_id AND l.tenant_id=NEW.tenant_id;",
-      "    ELSE SELECT v.status='PUBLISHED' INTO published FROM manufacturing_routing_versions v WHERE v.id=NEW.routing_version_id AND v.tenant_id=NEW.tenant_id; END IF;",
+      "    IF TG_TABLE_NAME='manufacturing_bom_lines' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_versions v WHERE v.id=NEW.bom_version_id AND v.tenant_id=NEW.tenant_id FOR SHARE;",
+      "    ELSIF TG_TABLE_NAME='manufacturing_bom_substitutes' THEN SELECT v.status='PUBLISHED' INTO published FROM manufacturing_bom_lines l JOIN manufacturing_bom_versions v ON v.id=l.bom_version_id AND v.tenant_id=l.tenant_id WHERE l.id=NEW.bom_line_id AND l.tenant_id=NEW.tenant_id FOR SHARE OF v;",
+      "    ELSE SELECT v.status='PUBLISHED' INTO published FROM manufacturing_routing_versions v WHERE v.id=NEW.routing_version_id AND v.tenant_id=NEW.tenant_id FOR SHARE; END IF;",
       "    IF published THEN RAISE EXCEPTION 'published manufacturing versions are immutable, child rows cannot be added, continue with a new draft version instead'; END IF;",
       '    RETURN NEW;',
       '  END IF;',
