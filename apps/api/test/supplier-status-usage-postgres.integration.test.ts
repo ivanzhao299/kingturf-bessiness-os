@@ -1,17 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { JsonObject } from '@kingturf/types';
 import { ownedProcurementApp } from './fixtures/owned-procurement-app.js';
+import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
+import {
+  bounded,
+  controlledTransaction,
+  outcome,
+  waitForBlocking,
+} from './fixtures/controlled-transaction.js';
 
 // PROC-5 B.2（TD-PROC-002 查证）：供应商处于 ON_HOLD / INACTIVE 时，后端哪些动作拦、哪些不拦。
 // 这里只刻画现状，不代表期望的产品语义（主协调裁定：本批不发明新的业务限制，只查证、如实上报）。
 // 结论（真库、完整应用分发）：
 //   拦：为该供应商登记报价（POST /api/v1/supplier-quotes）→ 409；
 //       为该供应商新建采购订单（POST /api/v1/purchase-orders）→ 409。
-//   不拦：供应商被暂停 / 停用之前建好的采购单照常签发、收货、取消；物料准入审核也不看供应商状态。
+//   TD-PROC-016：已裁定暂停 / 停用后不能签发既有草稿，恢复启用后可签发。
+//   不拦：此前已签发的采购单照常收货、取消；物料准入审核也不看供应商状态。
 // 询价单在数据模型上不指向供应商（procurement_rfqs 没有 supplier 列）：「给某供应商下询价」在
 // 系统里对应的是「登记该供应商对某张询价单的报价」。
-const identifier = (item: JsonObject, key = 'id'): string => {
+const identifier = (item: Readonly<Record<string, unknown>>, key = 'id'): string => {
   const value = item[key];
   if (typeof value !== 'string') throw new Error('Fixture identifier missing');
   return value;
@@ -203,24 +210,150 @@ describe('PROC-5 B.2 what a held or inactive supplier can still be used for (cha
     expect(await counts(supplierId)).toEqual({ quotes: 1, orders: 1 });
   });
 
-  it('is not blocked: a draft order created earlier can still be issued after the supplier is held or deactivated', async () => {
+  it('TD-PROC-016 checks ACTIVE, ON_HOLD and INACTIVE on both issue tracks; restoring ACTIVE permits issuance', async () => {
     const itemVersionId = await material('RAW-ISSUE');
-    for (const status of NOT_ACTIVE) {
+    for (const status of ['ACTIVE', ...NOT_ACTIVE]) {
       const supplierId = await supplier(`SUP-ISSUE-${status}`, itemVersionId);
-      const created = await orderFor(supplierId, itemVersionId, `PO-ISSUE-${status}`, false);
-      expect(created.statusCode).toBe(201);
-      const orderId = bodyOf(created).id;
-      if (typeof orderId !== 'string') throw new Error('Purchase order id missing');
-      await setStatus(supplierId, status);
-      const issued = await state().dispatch({
-        token,
-        method: 'PUT',
-        pathname: `/api/v1/purchase-orders/${orderId}/state`,
-        body: { action: 'issue' },
-        key: randomUUID(),
-      });
-      expect(issued.statusCode).toBe(200);
-      expect(bodyOf(issued)).toEqual({ id: orderId, status: 'ISSUED' });
+      for (const method of ['PUT', 'POST'] as const) {
+        const created = await orderFor(supplierId, itemVersionId, `PO-${method}-${status}`, false);
+        expect(created.statusCode).toBe(201);
+        const orderId = bodyOf(created).id;
+        if (typeof orderId !== 'string') throw new Error('Purchase order id missing');
+        const issue = () =>
+          state().dispatch({
+            token,
+            method,
+            pathname: `/api/v1/purchase-orders/${orderId}/${method === 'PUT' ? 'state' : 'issue'}`,
+            body: method === 'PUT' ? { action: 'issue' } : {},
+          });
+        await setStatus(supplierId, status);
+        const issued = await issue();
+        if (status !== 'ACTIVE') {
+          expect({ status, method, statusCode: issued.statusCode }).toEqual({
+            status,
+            method,
+            statusCode: 409,
+          });
+          expect(errorOf(issued)).toMatchObject({
+            code: 'conflict',
+            message: `供应商当前为「${status === 'ON_HOLD' ? '暂停' : '已停用'}」，不能签发采购订单；请恢复为已启用后重试`,
+          });
+          expect(
+            (
+              await state().db.query('SELECT status,ordered_at FROM purchase_orders WHERE id=$1', [
+                orderId,
+              ])
+            ).rows,
+          ).toEqual([{ status: 'DRAFT', ordered_at: null }]);
+          expect(
+            (
+              await state().db.query(
+                "SELECT id FROM audit_events WHERE target_id=$1 AND action='purchase-order.issued'",
+                [orderId],
+              )
+            ).rows,
+          ).toEqual([]);
+          expect(
+            (
+              await state().db.query(
+                "SELECT id FROM domain_event_outbox WHERE aggregate_id=$1 AND event_type='purchase-order.issued'",
+                [orderId],
+              )
+            ).rows,
+          ).toEqual([]);
+          await setStatus(supplierId, 'ACTIVE');
+          expect((await issue()).statusCode).toBe(method === 'PUT' ? 200 : 201);
+        } else expect(issued.statusCode).toBe(method === 'PUT' ? 200 : 201);
+        const saved = (
+          await state().db.query<{ status: string; ordered_at: Date | null }>(
+            'SELECT status,ordered_at FROM purchase_orders WHERE id=$1',
+            [orderId],
+          )
+        ).rows[0];
+        expect(saved?.status).toBe('ISSUED');
+        expect(saved?.ordered_at).toBeInstanceOf(Date);
+      }
+    }
+  });
+
+  it('TD-PROC-016 holds the supplier lock until issuance commits; a status change waits', async () => {
+    const { db, context } = state();
+    const itemVersionId = await material('RAW-LOCK');
+    const supplierId = await supplier('SUP-LOCK', itemVersionId);
+    const created = await orderFor(supplierId, itemVersionId, 'PO-LOCK', false);
+    const orderId = identifier(bodyOf(created));
+    const issuing = controlledTransaction(db, true);
+    const changing = controlledTransaction(db);
+    const issue = outcome(
+      new PostgresProcurementRepository(issuing.db).issuePurchaseOrder(
+        orderId,
+        context,
+        randomUUID(),
+      ),
+    );
+    let change: ReturnType<typeof outcome> | undefined;
+    try {
+      const blocker = await bounded(issuing.started);
+      await bounded(issuing.written);
+      change = outcome(
+        new PostgresProcurementRepository(changing.db).setSupplierStatus(
+          supplierId,
+          'ON_HOLD',
+          randomUUID(),
+          context,
+          randomUUID(),
+        ),
+      );
+      const waiter = await bounded(changing.started);
+      await waitForBlocking(db, waiter, blocker);
+      issuing.release();
+      expect((await bounded(issue)).ok).toBe(true);
+      expect((await bounded(change)).ok).toBe(true);
+    } finally {
+      issuing.release();
+      await Promise.allSettled([issue, ...(change ? [change] : [])]);
+    }
+  });
+
+  it('TD-PROC-016 waits for an earlier supplier suspension and refuses issuance after it commits', async () => {
+    const { db, context } = state();
+    const itemVersionId = await material('RAW-WAIT');
+    const supplierId = await supplier('SUP-WAIT', itemVersionId);
+    const orderId = identifier(bodyOf(await orderFor(supplierId, itemVersionId, 'PO-WAIT', false)));
+    const changing = controlledTransaction(db, true);
+    const issuing = controlledTransaction(db);
+    const change = outcome(
+      new PostgresProcurementRepository(changing.db).setSupplierStatus(
+        supplierId,
+        'INACTIVE',
+        randomUUID(),
+        context,
+        randomUUID(),
+      ),
+    );
+    let issue: ReturnType<typeof outcome> | undefined;
+    try {
+      const blocker = await bounded(changing.started);
+      await bounded(changing.written);
+      issue = outcome(
+        new PostgresProcurementRepository(issuing.db).issuePurchaseOrder(
+          orderId,
+          context,
+          randomUUID(),
+        ),
+      );
+      const waiter = await bounded(issuing.started);
+      await waitForBlocking(db, waiter, blocker);
+      changing.release();
+      expect((await bounded(change)).ok).toBe(true);
+      expect(await bounded(issue)).toMatchObject({ ok: false, error: { code: 'conflict' } });
+      expect(
+        (await db.query('SELECT status,ordered_at FROM purchase_orders WHERE id=$1', [orderId]))
+          .rows,
+      ).toEqual([{ status: 'DRAFT', ordered_at: null }]);
+    } finally {
+      changing.release();
+      await Promise.allSettled([change, ...(issue ? [issue] : [])]);
     }
   });
 

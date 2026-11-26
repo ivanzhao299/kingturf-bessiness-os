@@ -5,6 +5,7 @@
 // 检索、行项收货状态与收货记录呈现、上传门、刷新错误面）。
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { h, render } from 'preact';
+import { act } from 'preact/test-utils';
 import type { ComponentType } from 'preact';
 import {
   installGlobalTestDom,
@@ -277,6 +278,31 @@ describe('U3-PROC-3 采购单控制台', () => {
       'PUT',
     );
     expect(ports.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('TD-PROC-016 签发拒绝在签发表单内显示供应商状态，保留草稿并允许重试', async () => {
+    const message = '供应商当前为「暂停」，不能签发采购订单；请恢复为已启用后重试';
+    const submit = vi.fn().mockRejectedValueOnce(new Error(message)).mockResolvedValue(null);
+    const ports = portsFor([order], ALL_PERMISSIONS, { submit });
+    const host = mount(ports);
+    await act(async () => {
+      element(host.querySelector('[data-testid="kt-po-open"]')).click();
+      await flush();
+    });
+    element(host.querySelector('[data-testid="kt-po-issue"]')).click();
+    await confirmAction(host, '签发采购订单', '确认签发');
+    await act(flush);
+    const error = element(host.querySelector('form.po-issue-form [role="alert"]'));
+    expect(error.textContent).toBe(message);
+    expect(ports.refresh).not.toHaveBeenCalled();
+    expect(
+      element(host.querySelector('[data-testid="kt-po-detail"] .status-badge')).textContent,
+    ).toBe('草稿');
+    element(host.querySelector('[data-testid="kt-po-issue"]')).click();
+    await confirmAction(host, '签发采购订单', '确认签发');
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(ports.refresh).toHaveBeenCalledTimes(1);
+    render(null, host);
   });
 
   it('ISSUED 订单仅可取消（PUT state cancel）', async () => {

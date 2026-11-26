@@ -19,7 +19,11 @@ import {
   type Context,
   type Db,
 } from './procurement-read-repositories.ts';
-import { cancelOpenPurchaseOrder } from './purchase-order-write-repository.ts';
+import {
+  cancelOpenPurchaseOrder,
+  issueDraftPurchaseOrder,
+  lockActivePurchaseSupplier,
+} from './purchase-order-write-repository.ts';
 import {
   readSupplierQuote,
   readSupplierQuotePage,
@@ -484,11 +488,13 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
             'Purchase item requires a valid supplier qualification',
           );
       }
-      if (input.issue)
+      if (input.issue) {
+        await lockActivePurchaseSupplier(tx, row.id, context);
         await tx.query(
           "UPDATE purchase_orders SET status='ISSUED',ordered_at=now() WHERE id=$1 AND tenant_id=$2",
           [row.id, context.actor.companyId],
         );
+      }
       const result = json({
         id: row.id,
         status: input.issue ? 'ISSUED' : 'DRAFT',
@@ -509,7 +515,7 @@ export class PostgresProcurementRepository extends PostgresProcurementReadReposi
   }
 
   public issuePurchaseOrder(id: string, context: Context, correlationId: string) {
-    return this.transition(id, 'purchase-order', context, correlationId);
+    return issueDraftPurchaseOrder(this.db, id, context, correlationId);
   }
 
   private transition(

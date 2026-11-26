@@ -32,6 +32,7 @@ import type { ContractDocumentRow, PurchaseOrderConsolePorts, PurchaseOrderRow }
 import { FocusAnchor } from './focus-anchor';
 import { ConsoleNotice } from './console-notice';
 import { reloadSelectedDetail } from './selected-sync';
+import { PurchaseOrderIssueForm } from './po-issue-form';
 
 // U3-PROC-3（ADR-0014 分域重写）：采购单控制台——原 vanilla purchase-register PO 能力
 // 面等价迁移（创建并签发载荷逐字节一致；收货卡片/登记收货表单属 goods-receipts 域，
@@ -252,31 +253,20 @@ const PoDrawer = ({ state }: Readonly<{ state: PoPageState }>) => {
       <StatusFlow state={state} />
       {/* TD-WF-005 / TD-WF-012：行内表单开着时，提交失败显示在该表单自己的提示区（FormSection 的
           error，紧挨提交按钮）；这里的错误位只留给不经表单的动作。 */}
-      {state.activeDocumentForm === null && state.submitError !== '' ? (
+      {state.activeDocumentForm === null && !mayIssue && state.submitError !== '' ? (
         <p class="console-error" role="alert" data-testid="kt-po-submit-error">
           {state.submitError}
         </p>
       ) : null}
       {state.activeForm === null ? (
         <div class="console-actions" data-testid="kt-po-actions">
-          {mayIssue ? (
-            <button
-              type="button"
-              class="primary"
-              data-testid="kt-po-issue"
-              onClick={() => {
-                // TD-WF-014②：签发不可逆，先确认。
-                const number = text(ports, row, 'poNumber', 'po_number');
-                askConfirm(state.confirm, {
-                  title: '签发采购订单',
-                  message: `签发后订单 ${number} 进入执行，供应商开始备货。`,
-                  confirmLabel: '确认签发',
-                  run: () => state.runState(row, 'issue'),
-                });
-              }}
-            >
-              签发订单
-            </button>
+          {mayIssue && state.activeDocumentForm === null ? (
+            <PurchaseOrderIssueForm
+              number={text(ports, row, 'poNumber', 'po_number')}
+              confirm={state.confirm}
+              error={state.submitError}
+              issue={() => state.runState(row, 'issue')}
+            />
           ) : null}
           {mayCancel ? (
             <button
