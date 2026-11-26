@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Database, SqlClient } from '@kingturf/database';
+import type { QueryResultRow } from 'pg';
 
 export function signal<T>() {
   let resolve!: (value: T) => void;
@@ -43,6 +44,54 @@ export function controlledTransaction(database: Database, pauseAfterWork = false
     db,
     started: started.promise,
     written: written.promise,
+    release: () => {
+      resume.resolve(undefined);
+    },
+  };
+}
+
+/** Park two real transactions after the matching statement has completed, preserving FK locks. */
+export function pairedStatementBarrier(original: Database['transaction'], match: RegExp) {
+  const arrived = signal<undefined>(),
+    resume = signal<undefined>();
+  const errors: string[] = [];
+  let count = 0;
+  const transaction: Database['transaction'] = async (work) =>
+    original(async (tx) => {
+      const client: SqlClient = {
+        // Preserve SqlClient's caller-selected row projection while forwarding every real query.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+        async query<T extends QueryResultRow = QueryResultRow>(
+          text: string,
+          values?: readonly unknown[],
+        ): Promise<Readonly<{ rows: T[]; rowCount: number | null }>> {
+          try {
+            const result = await tx.query<T>(text, values);
+            if (match.test(text)) {
+              count += 1;
+              if (count === 2) arrived.resolve(undefined);
+              await resume.promise;
+            }
+            return result;
+          } catch (error: unknown) {
+            if (
+              typeof error === 'object' &&
+              error !== null &&
+              'code' in error &&
+              typeof error.code === 'string'
+            )
+              errors.push(error.code);
+            arrived.reject(error);
+            throw error;
+          }
+        },
+      };
+      return work(client);
+    });
+  return {
+    transaction,
+    arrived: arrived.promise,
+    errors,
     release: () => {
       resume.resolve(undefined);
     },

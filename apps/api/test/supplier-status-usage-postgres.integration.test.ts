@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ownedProcurementApp } from './fixtures/owned-procurement-app.js';
 import { PostgresProcurementRepository } from '../src/procurement-repositories.js';
 import {
   bounded,
   controlledTransaction,
   outcome,
+  pairedStatementBarrier,
   waitForBlocking,
 } from './fixtures/controlled-transaction.js';
 
@@ -273,6 +274,71 @@ describe('PROC-5 B.2 what a held or inactive supplier can still be used for (cha
         expect(saved?.status).toBe('ISSUED');
         expect(saved?.ordered_at).toBeInstanceOf(Date);
       }
+    }
+  });
+
+  it('TD-PROC-016 concurrently creates and issues two orders after both supplier FK locks are held', async () => {
+    const { db } = state();
+    const itemVersionId = await material('RAW-TWO-CREATES');
+    const supplierId = await supplier('SUP-TWO-CREATES', itemVersionId);
+    const gate = pairedStatementBarrier(db.transaction.bind(db), /^INSERT INTO purchase_orders\(/u);
+    const intercepted = vi.spyOn(db, 'transaction').mockImplementation(gate.transaction);
+    const pending = ['PO-TWO-CREATES-A', 'PO-TWO-CREATES-B'].map((number) =>
+      orderFor(supplierId, itemVersionId, number, true),
+    );
+    try {
+      await bounded(gate.arrived, 5000);
+      gate.release();
+      const responses = await bounded(Promise.all(pending), 5000);
+      expect({
+        statuses: responses.map((response) => response.statusCode),
+        sqlErrors: gate.errors,
+      }).toEqual({ statuses: [201, 201], sqlErrors: [] });
+      const ids = responses.map((response) => identifier(bodyOf(response)));
+      expect(
+        (
+          await db.query(
+            'SELECT status,ordered_at IS NOT NULL AS signed FROM purchase_orders WHERE id=ANY($1::uuid[]) ORDER BY po_number',
+            [ids],
+          )
+        ).rows,
+      ).toEqual([
+        { status: 'ISSUED', signed: true },
+        { status: 'ISSUED', signed: true },
+      ]);
+      expect(
+        (
+          await db.query(
+            'SELECT quantity,unit_price FROM purchase_order_lines WHERE purchase_order_id=ANY($1::uuid[]) ORDER BY purchase_order_id',
+            [ids],
+          )
+        ).rows,
+      ).toEqual([
+        { quantity: '10.000000', unit_price: '2.500000' },
+        { quantity: '10.000000', unit_price: '2.500000' },
+      ]);
+      expect(
+        (
+          await db.query(
+            'SELECT target_id,action FROM audit_events WHERE target_id=ANY($1::uuid[]) ORDER BY target_id',
+            [ids],
+          )
+        ).rows,
+      ).toEqual([...ids].sort().map((id) => ({ target_id: id, action: 'purchase-order.created' })));
+      expect(
+        (
+          await db.query(
+            'SELECT aggregate_id,event_type FROM domain_event_outbox WHERE aggregate_id=ANY($1::uuid[]) ORDER BY aggregate_id',
+            [ids],
+          )
+        ).rows,
+      ).toEqual(
+        [...ids].sort().map((id) => ({ aggregate_id: id, event_type: 'purchase-order.created' })),
+      );
+    } finally {
+      gate.release();
+      await Promise.allSettled(pending);
+      intercepted.mockRestore();
     }
   });
 
