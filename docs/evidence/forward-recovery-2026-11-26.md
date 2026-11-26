@@ -229,3 +229,89 @@ R 作为实际健康原应用进行下一次零 pending 的 B 重试时，不消
 独立测试修正 `4803bb450ba52545622b2ff97fab8a5a82e0e0dc` 将 0079 原 SQL 复制到该用例已建立的 0078 私有目录，再明确以该目录执行 migrate/status，精确检验所声明的 0078→0079 历史升级。原末位 0079、全部已应用、状态/时间/hash/完整行项全等及升级后同结构草稿被拒绝的断言逐字保留；其余真库用例继续默认使用完整 81 清单。生产门禁、业务代码、迁移字节和注册表均未修改。
 
 主协调在该干净提交上经 heavy 复跑整份 BOM 真库测试：**10/10 通过，退出 0，7.41 秒**，前后 HEAD 不变、受跟踪工作树干净。结果与日志在 `/home/jinhuit/Kingturf/kingturf-coord/integration-artifacts/bom-upgrade-4803bb4/`；制造侧证据同步记录。后继干净提交仍须完整 `pnpm ci:local`，不能把本次定向绿态替代该门禁。
+
+## 12. 运行镜像最小封装（TD-REL-015）
+
+本批在独立工作树 `/home/jinhuit/Kingturf/kingturf-coord/wave4/runtime-image`、分支 `fix/w4-runtime-image` 实施，基线 `514d8f4e2948dc2c51bf8dfd73f5f4c62eaa792e`；原 FN2、transport、R 工作树均未修改。主协调提供该基线完整 CI 退出 0 的回执；本批完整 `ci:local` 和 production 字节的浏览器复验仍由主协调集成执行，各提交标 `[未测试]`。本节记录真实本机构建、扫描和运行，不是 `release-images` 成功物料，也不是兼容恢复演练报告，TD-REL-011／015 的发布放行仍待主协调后继验收。
+
+### 12.1 原阻断、实施顺序与封装边界
+
+真实 R/B images run `45796321430`／`45796346483` 均在 API HIGH/CRITICAL 门退出 1，未生成可用的原 tar/source artifact；旧失败 R `ecb3ded74dde454725265f0c7ea354a4e80ef9b5` 历史保留。主协调用 `aquasec/trivy:0.70.0` 复扫公开 B API 原根摘要 `sha256:702ff8214cd4a41b994f1a0a82a4ca03e605e3b9fdc930f1101509d4f9a1af17`，为 **63 HIGH、2 CRITICAL**：Debian 12.15 的 39 项 OS 命中均无该发行版 FixedVersion，另 26 项来自残留的 pnpm／npm 工具及依赖。不能把这些发现解释成全部项目业务依赖都要升级，项目 prod audit 与镜像扫描是不同证据。
+
+本批从原 B-job 日志精确取得 Web 原根摘要 `sha256:32d9da665094727b1e925dc6ac7b18dadb1ebd38273971951b3365c30cbcc7ce`，匿名实扫退出 1，**57 HIGH、1 CRITICAL**，不是假定 Web 已通过。旧 Web 附带 image-filter、GeoIP、njs、XSLT 及其依赖，现有固定 Nginx 配置不使用这些模块。
+
+提交顺序（均 `[未测试]`，表示未由本代理执行最终完整 CI）：
+
+| 提交                                       | 内容                                                              |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| `5ad55686de258a466ef03cb36a2a4e5d26c1f716` | 先登记 TD-REL-015，保留所有者裁定首节                             |
+| `985641c270b51ee356f4f0e13b588fff69827024` | API 独立依赖阶段与受维护的最小运行层                              |
+| `35cc30b217f7f13d306893a57bc585af492e803d` | Web 独立最小运行层                                                |
+| `69b8611726c56f456673f57c89bd1ce34ffefb2a` | 补回原字节相同的供应商 `50x.html`                                 |
+| `158baf69fecb51264063992dbd2601e20c6aa17b` | 去掉多余 GNU wget，保留原 BusyBox 健康命令 GET 语义；最终源码冻结 |
+
+API 依赖阶段为 `node:24-alpine3.23`，仅安装 `@kingturf/api...` 工作区闭包的生产依赖；运行阶段从 `alpine:3.23` 升级维护包后仅安装 `nodejs~24`、CA、完整 ICU 与实际库依赖。本次为 Alpine **3.23.8**、Node **24.22.3-r0**、30 个 OS 包，运行层不带全局 npm、Corepack、pnpm 或其缓存。API 原大小 408,371,291 B，本次 192,402,169 B。Web 使用维护后的 Alpine、Nginx **1.28.3-r10**、CA 和基础 BusyBox，共 19 个 OS 包；原 96,414,231 B，本次 30,016,271 B。APK 数据库和版本元数据完整保留，没有 ignore、排除扫描、降严重度或 ignore-unfixed。
+
+两个镜像的原缺省 User 均为空（实际 UID 0），新镜像保持；API 保留 UID/GID 1000 的 node 账号。构建时创建附件目录并设 node:node／0750，运行时没有入口 chown，不改现有宿主挂载的所有权。`/app/apps/api/src/server.ts`、`/app/packages/database/src/cli.ts`、全部 81 原 SQL 与 Node transform-types 命令保留原路径。Web 原 Nginx 配置及 Compose 字节不变；直接使用 BusyBox wget，不能用 GNU wget 改变原健康命令的请求方法。
+
+构建阶段仍固定项目 pnpm **10.33.4**，该版本在既有报告中的工具漏洞边界未消除。本批没有全量扫描并认证构建阶段无漏洞，也没有升级业务依赖、全项目 pnpm 或锁文件；最终运行镜像零发现不代表整个构建工具链零风险。基础镜像与 APK 仍按维护分支获取更新，未来重建必须重新捕获实际摘要、库存和扫描结果。
+
+### 12.2 实际镜像身份与完整扫描
+
+全部构建和扫描经 `coord/bin/heavy`，从各提交的不可变 `git archive` 构建；使用本批 `docker-config/config.json` 的空 auth 配置，没有读取真实环境或生产凭据。证据根目录为 `/home/jinhuit/Kingturf/kingturf-coord/wave4/runtime-image-artifacts/`。
+
+下列摘要是**本机 BuildKit OCI index 根摘要**，与该 daemon 报告的 image ID 相同。已从各原保存 tar 读取对应 blob、验证其 SHA-256 和 index 类型，见 `local-image-identities.json`；不是把 config 摘要当根摘要。镜像仅有本机 tag，没有推送或成功的 GHR run 绑定。
+
+| 服务 | 实际构建源码                               | 本机 tag                               | 本机 OCI index 根摘要                                                     | linux/amd64 manifest 摘要                                                 |
+| ---- | ------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| API  | `985641c270b51ee356f4f0e13b588fff69827024` | `e2e-harness-runtime-api:985641c270b5` | `sha256:3f0e702787f4f194909f88001790b51afa347986c21468523ce0b95516752c7b` | `sha256:c942e545745008a015b012052627253414dfb3a502f888e545daa3d8d5ac3371` |
+| Web  | `158baf69fecb51264063992dbd2601e20c6aa17b` | `e2e-harness-runtime-web:158baf69fecb` | `sha256:d5221fb8cd485ab78525df7b3aff7b070b2cc753e42c8a4682c9d6cd9a19874d` | `sha256:57f0a7a3861f0396e1f52e80d18bc66b1d1660446655b0918ba58f780c83cdbd` |
+
+API 原保存 `image/image.tar` SHA-256 为 `0f08d814184d44bc8767729035ac358f597ca6a897e2c696954051e80e486856`，Web 为 `0323b6430a98da6e2fd47a2e54525ab5e676f7423e6fa26b13dd7907956a86d7`。它们只是本机扫描输入，不作为恢复原 tar。实际构建输入 archive 分别为 `c4e9f78d54507e359b48fb19c45aa1c8f1340cbfab3294899cac6ac81607b5b2`、`b2cb3d067dbbab808a1a21ba206328a823a13b94556009e6ff0a77ea0f813ba9`；原始 build metadata、完整日志、镜像保存字节和扫描 JSON 分别在 `builds/api-985641c270b5/`、`builds/web-158baf69fecb/`。
+
+同版 Trivy **0.70.0** 每个镜像真实运行两次：`--scanners vuln,secret --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 1`，以及原阻断口径 `--severity HIGH,CRITICAL --exit-code 1`。四次均退出 **0**，所有级别漏洞和秘密发现均为 **0**。
+
+| 完整报告（相对证据根）                      | 原始 JSON SHA-256                                                  | 退出码／发现 |
+| ------------------------------------------- | ------------------------------------------------------------------ | ------------ |
+| `builds/api-985641c270b5/reports/full.json` | `2415c7e2f4493be35dce6a2e89c3cb8a42378300ab813c9ff1e3f29bc864210c` | 0／0         |
+| `builds/api-985641c270b5/reports/gate.json` | `081c5bebf15044b14900c3a0432c1248eb3a7d6a5a83f12d83f7516891049bbf` | 0／0         |
+| `builds/web-158baf69fecb/reports/full.json` | `3e5594963db377d0b350f7b76b7e630e4ad12c6ec9b6a362c5f52337bf80f657` | 0／0         |
+| `builds/web-158baf69fecb/reports/gate.json` | `9376c26e5aad163c7ab4fc82d119f26d99531a938336d9cc02c7e6793ee5b2cb` | 0／0         |
+
+### 12.3 真实运行、原 CLI 与权限契约
+
+最终启动器 `validate-runtime.py` 以明确的 Web 源码 SHA 选择已扫描镜像；通过回执 `validation-1caf153f8f/result.json`，原字节 SHA-256 为 `79e2ee3db5cab347b3463e440f0ae003d1b39105fd628d0cf939fe5786fb6249`，启动器 SHA-256 为 `4242edf8835a7cd7322150e60794034242434298d4528ba5277e29dd1f82383f`。该轮 14 组检查全部通过，日志 `logs/17-runtime-final-validation.log`，每条实际 Docker／CLI 命令与脱敏 stdout/stderr 另存编号日志。
+
+| 契约         | 实际结果                                                                                                                                                                                                        |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 原迁移 CLI   | UID1000、只读 rootfs，原 `node --experimental-transform-types packages/database/src/cli.ts`；回环合成库 guard 通过，production migrate 两次均 0，status 恰 81 条、全部 applied，实际与已存 checksum 全等        |
+| SQL 字节     | 镜像中 `/app/packages/database/migrations` 恰 81 个原路径 SQL，逐文件 SHA-256 与工作树完全相同                                                                                                                  |
+| PG／TLS      | 自有 PostgreSQL 17.7，真实 `pg_stat_ssl` 为 TLSv1.3、TLS_AES_256_GCM_SHA384、256 bits；移除合成自签 CA 后必须以 `DEPTH_ZERO_SELF_SIGNED_CERT` 拒绝，未把一般连接失败算通过                                      |
+| API 生产启动 | NODE_ENV=production，UID0 与 UID1000 均用原 CMD 启动；直接 health／ready 为 200，version 为指定真实 API 源码 SHA 与 production                                                                                  |
+| 写闸         | UID0 启闸时 POST login 为 503；UID1000 无闸时同类未知用户 login 为 401，实际进入原认证路径；未执行真实业务认证写                                                                                                |
+| PID1／退出   | 两种 UID 的 `/proc/1/exe` 均为 `/usr/bin/node`，cmdline 精确为 `node --experimental-transform-types apps/api/src/server.ts`；原 Node 健康命令 0、Docker healthy，实际 SIGTERM 后均退出 0                        |
+| 附件卷       | 两份自有 bind 分别属 UID0／1000，实际 LocalAttachmentStorage put/get/delete；内容含中文、原字节往返相同，文件 owner 与运行 UID 一致、权限 0600，删除后不存在；初始化／清理所需 chown 仅在自有夹具 helper 中执行 |
+| Web          | 最终镜像实际反代 health／ready／version 与 API 相同，首页和原字节 50x 可取；原 Compose `wget --quiet --tries=1 --spider http://127.0.0.1:8080/health` 真实退出 0，Docker healthy                                |
+| 资源回收     | 自有容器／网络剩余均空，附件 bind 清空并恢复宿主 owner，合成 TLS 私钥删除，cleanup_errors 空；未停止或删除外来网络／容器                                                                                        |
+
+因宿主 Docker 地址池耗尽，最终夹具没有申请新子网：自有 PG 父容器使用默认 bridge、仅向宿主 127.0.0.1 随机发布 API/Web HTTP 端口；PG 仅监听该自有 namespace 的 127.0.0.1:5432、不向宿主发布。CLI/API/Web 只加入该父容器 namespace。连接串和合成秘密只经子进程环境传递，命令日志落盘前脱敏，未写连接串文件。
+
+另以旧 B0 与新 API 的实际 PasswordHasher 双向验证 scrypt，均接受对方生成的测试 hash、拒绝错误口令；UID1000、只读 rootfs、无网络。两者 Node 都是 v24.22.3；ICU 由旧镜像的 78.3 变为 76.1，Node 内置 tz 数据由 2026e 变为 2024b。zh-CN／en-US、固定日期中文输出 `2026/11/26 08:00:00`、Asia/Shanghai 与 America/New_York 的本地小时均通过，见 `scrypt-intl.json`。这是具体 locale／时区兼容性检查，不是所有 ICU／全球时区规则的穷尽证明；TLS 检查针对本轮合成 PG CA，没有访问生产数据库或外部业务集成。
+
+### 12.4 静态字节、保留的失败与后继验收
+
+`static-web-158baf69fecb-comparison.json` 保存最终实际镜像目录的完整 raw SHA-256 map：与旧 B0 **50／50** 文件完全相等，missing／extra／different 均空。与主协调同 514 源码 production 构建的 **49／49** 文件完全相等，仅多原供应商 `50x.html`，其 hash 为 `876766b4e80133fd490603e073d3567425b88794828a9292104244c9e40875ed`。主协调 map 路径为 `integration-artifacts/build-mode-514d8f4/production-map.json`，原字节 hash 为 `92a35475bbca7a69fb7061a81e96bc5928868a1ca553f4040c4d61439010af00`；没有只比文件数／长度、gzip 或归一化后的字符串。
+
+原浏览器验收的 test-mode dist 与 B0 production 的真实差异另存 `reference-static-comparison.json`：18 个 hashed 文件名以及 index／manifest 原字节不符。主协调以同源码同 cwd 仅改 NODE_ENV 的因果实验确认，独立登记 TD-GATE-007 并提交 `775445d`，只将 `ci:local` 的 build 子命令显式 production；后继浏览器验证由主协调重跑。本树没有把镜像构建改成 test 来凑一致，没有抹去原差异回执。
+
+失败历史原样保留：
+
+1. 初版 Web `35cc30b` 扫描为零，但目录比较发现缺原 `50x.html`；实际 APK vendor 页与 B0 字节相同，在 `69b8611` 独立补回并重建扫描。初版报告和比较仍保留。
+2. `validation-29756d644d` 在申请测试网络时因地址池耗尽而停，服务尚未启动；结果 passed=false，零残留。随后只改夹具采用自有父 namespace，没有删除外来网络。
+3. `validation-cde4754a68` 的附件夹具初始化和清理因辅助 root 去掉全部 capability、不能遍历宿主 UID1000／0750 目录而失败；原编号日志和当时脚本保留，另记中断结果。仅给夹具初始化／清理加 CHOWN、DAC_OVERRIDE、FOWNER；服务和附件实际操作不借这些初始化权限，旧私钥与资源已清。
+4. `validation-0e9b15274b` 的裸 AssertionError 和 `validation-8c5e5b4d3d` 后继 traceback 保留；后者明确定位 `/proc/1/comm` 实际为 MainThread，错误地要求它等于 node。改为核实际 exe／完整 cmdline，并检查真实 SIGTERM 退出，没有修改服务源码或启动命令。
+5. `validation-8a03e717e4` 发现本批新增 GNU wget 默认 spider 发 HEAD，实际 Nginx 日志 HEAD health→401、命令退出 6。`wget-behavior-comparison.json` 在同一自有 loopback GET-only 夹具上证明：旧 B0 wget 为 GET／0，新增 GNU 为 HEAD／6，新镜像自带 BusyBox 为 GET／0。`158baf6` 独立移除 GNU 包后重新构建、双扫描和完整运行通过，没有改 API、Compose、Nginx 配置或健康命令来迁就新工具。
+
+最终源码白名单仅两份现有 Dockerfile；交付文档白名单为本证据、tech-debt-tracker 和 docs/index。`source-conservation-158baf69fecb.json`（原字节 SHA-256 `b77d640a5ffdb408621daf6557f494226e73cb988d1b4ca45e576f4b5ca4a342`）精确对账基线／最终 `158baf6` 冻结源码：整个 apps／packages、工作流、所有 package／锁文件、Compose 和 Nginx 配置的 Git 对象均相同；API 实际构建输入在最终冻结中也相同，SQL 已有上述镜像内 81 文件逐字节复核。旧 `source-conservation.json` 仍绑定 `69b8611`，作为历史保留，不覆盖；新回执另核 `69b8611→158baf6` 只有 Web Dockerfile 的 GNU 包／注释差异。所有者裁定首节原 4,761 字节 SHA-256 `58e30a61b3bf70b7c9e313d2b498140e9a14d814f5266da7d68d5823a4414830` 完全保留。
+
+新 R 仍由主协调在另树构造，要求业务源码与 L `5dc88e5c922ff731e2cfeb949b28c5cd8c333032` 保真，仅纳入已批准的 81 pin／SQL 与必要封装；本批未改旧 R、批准文件、恢复 driver、工作流或发布锁，未 push／上传／部署。真正 GHR 双镜像原物料、两层恢复、恢复后认证写和最终集成 CI 必须另行实跑；本机运行验证明确 `recovery_drill=false`，不能替代这些材料。

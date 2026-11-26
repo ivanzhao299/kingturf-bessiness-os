@@ -1,6 +1,6 @@
 # docs/index.md（全部文档索引）
 
-[TD-REL-015 运行镜像扫描阻断登记](exec-plans/tech-debt-tracker.md)记录 R/B 构建的真实 HIGH/CRITICAL 失败、API 运行层 OS／构建工具残留与本批最小封装边界；后续真实镜像实测沿 [forward-recovery 证据](evidence/forward-recovery-2026-11-26.md)追加，旧失败 R 与报告保留。
+[TD-REL-015 运行镜像最小封装](exec-plans/tech-debt-tracker.md)及 [forward-recovery 证据 §12](evidence/forward-recovery-2026-11-26.md)记录先登记后修复的 API／Web 独立提交、原 65／58 项 HIGH+ 阻断、最终完整扫描与 HC 门均 0、`158baf6` 冻结、本机 OCI 摘要与完整报告、production／B0 静态字节全等、原 CLI81／TLS／UID0与1000附件／写闸／PID1／SIGTERM／BusyBox 健康命令实测；保留全部失败和构建工具边界，真实 GHR／恢复与集成验收归主协调。
 
 [TD-REL-011 受控前滚恢复](evidence/forward-recovery-2026-11-26.md)记录失败 API 来源绑定、停服留闸及原严格部署接线、显式 compatible_recovery 实测物料门、负例与未执行的真实 81 清单镜像恢复边界；§10–11 保留两轮集成 CI 的迁移夹具失败，以及修正后同树运维 242/242、BOM 真库 10/10 回执，完整门禁继续复跑。
 
