@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:24-alpine3.23 AS dependencies
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
@@ -7,17 +7,40 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
-COPY eslint.config.mjs prettier.config.mjs ./
 COPY apps/api/package.json apps/api/package.json
-COPY apps/web/package.json apps/web/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/types/package.json packages/types/package.json
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm --filter @kingturf/api... install --frozen-lockfile --prod
 
-COPY apps/api apps/api
-COPY packages packages
+FROM alpine:3.23 AS runtime
 
+# Keep signed APK/version metadata. Only the maintained Node 24 runtime and its
+# libraries cross this boundary; npm, Corepack, pnpm and their caches do not.
+# Full ICU preserves the official Node image's locale/time-zone capabilities.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache 'nodejs~24' ca-certificates icu-data-full \
+    && addgroup -g 1000 node \
+    && adduser -u 1000 -G node -s /bin/sh -D node \
+    && mkdir -p /var/lib/kingturf/attachments \
+    && chown node:node /var/lib/kingturf/attachments \
+    && chmod 750 /var/lib/kingturf/attachments
+
+WORKDIR /app
+COPY --from=dependencies /app/package.json ./package.json
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/apps/api/package.json ./apps/api/package.json
+COPY --from=dependencies /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=dependencies /app/packages ./packages
+COPY apps/api/src ./apps/api/src
+COPY packages/config/src ./packages/config/src
+COPY packages/database/src ./packages/database/src
+COPY packages/database/migrations ./packages/database/migrations
+COPY packages/domain/src ./packages/domain/src
+COPY packages/types/src ./packages/types/src
+
+# Preserve the original default UID 0. Existing explicit UID/GID 1000 binds can
+# still use the node account; no startup chown changes a host attachment mount.
 EXPOSE 3000
 CMD ["node", "--experimental-transform-types", "apps/api/src/server.ts"]
