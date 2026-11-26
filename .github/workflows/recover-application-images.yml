@@ -114,7 +114,7 @@ jobs:
           assert run['head_sha']==sys.argv[2] and run['conclusion']=='success' and run['event']=='workflow_dispatch'
           assert run['path']=='.github/workflows/release-images.yml' and run['head_repository']['full_name']=='ivanzhao299/kingturf-bessiness-os'
           PYTHON
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
