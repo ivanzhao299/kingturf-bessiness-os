@@ -12,6 +12,8 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { audit, pickTriggers } from './walk-audit.mjs';
+import { checkDrawer, checkStatusFilter } from './walk-interactions.mjs';
+import { evaluateReport, routeProblems } from './walk-verdict.mjs';
 
 const REPOSITORY = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const PRESETS = {
@@ -73,62 +75,51 @@ async function openRoute(page, route) {
   await page.waitForTimeout(500);
 }
 
-async function checkDrawer(page, route, index, tag, { tabs, shot }) {
-  const handle = page
-    .locator(`[data-route-view~="${route}"] [data-e2e-pick="${index}"]`)
-    .filter({ visible: true })
-    .first();
-  await handle.evaluate((element, value) => element.setAttribute('data-e2e-trigger', value), tag);
-  await handle.scrollIntoViewIfNeeded();
-  await handle.click({ timeout: 8000 });
-  await page.locator('.detail-drawer').first().waitFor({ state: 'visible', timeout: 8000 });
-  await page.waitForTimeout(600);
-  const geo = await page.evaluate(() => {
-    const drawer = globalThis.document.querySelector('.detail-drawer');
-    const rect = drawer.getBoundingClientRect();
-    return {
-      position: globalThis.getComputedStyle(drawer).position,
-      // 宽度档位（DetailDrawer 的 data-size：default / wide）。只看宽度数值分不清「宽抽屉在窄屏被压窄」
-      // 与「默认抽屉」（TD-TEST-028）。
-      size: drawer.getAttribute('data-size'),
-      top: Math.round(rect.top),
-      rightGap: Math.round(globalThis.window.innerWidth - rect.right),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      viewportWidth: globalThis.window.innerWidth,
-      viewportHeight: globalThis.window.innerHeight,
-    };
-  });
-  const focusInDialog = () =>
-    page.evaluate(() => Boolean(globalThis.document.activeElement?.closest('[role="dialog"]')));
-  const focusInitial = await focusInDialog();
-  const drawerAudit = await page.evaluate(audit, { kind: 'drawer' });
-  await page.screenshot({ path: join(shot.directory, `${tag}-drawer.png`) });
-  const tabStops = [];
-  for (let step = 0; step < tabs; step += 1) {
-    await page.keyboard.press('Tab');
-    tabStops.push(await focusInDialog());
+async function walkRoutes(page, requested, report, options, takeErrors) {
+  const { tabs, shot, maxDrawers } = options;
+  for (const route of requested) {
+    const row = { route, reached: false, triggers: [], triggerPlan: [], drawers: [], filters: [] };
+    const started = Date.now();
+    if (!report.navRoutes.includes(route)) row.skipped = 'not-in-nav';
+    else {
+      try {
+        await openRoute(page, route);
+        row.reached = true;
+        row.readyMs = Date.now() - started;
+        row.audit = await page.evaluate(audit, { kind: 'page', route });
+        const slug = route.replaceAll('/', '__');
+        row.screenshot = join(shot.directory, `${slug}.png`);
+        await page.screenshot({ path: row.screenshot, fullPage: true });
+        row.triggerPlan = await page.evaluate(pickTriggers, route);
+        row.triggers = row.triggerPlan.map((trigger) => trigger.key);
+        for (const trigger of row.triggerPlan.slice(0, maxDrawers)) {
+          const tag = `${slug}--${trigger.key
+            .replace(/^kt-/u, '')
+            .replace(/-open$/u, '')
+            .replace(/^text:/u, 'view')}`;
+          const results = trigger.kind === 'status-filter' ? row.filters : row.drawers;
+          try {
+            const check = trigger.kind === 'status-filter' ? checkStatusFilter : checkDrawer;
+            results.push(await check(page, route, trigger, tag, { tabs, shot }));
+          } catch (error) {
+            results.push({ key: trigger.key, tag, error: String(error).slice(0, 200) });
+            // 保留本次失败，Esc 只清理现场；不会重试或把重试结果覆盖为通过。
+            await page.keyboard.press('Escape').catch(() => undefined);
+          }
+        }
+      } catch (error) {
+        row.error = String(error).slice(0, 400);
+      }
+    }
+    Object.assign(row, takeErrors());
+    row.problems = routeProblems(row, tabs);
+    row.ok = row.problems.length === 0;
+    report.routes.push(row);
+    console.log(
+      `${row.ok ? 'ok ' : 'ERR'} ${route.padEnd(26)} ready=${row.readyMs ?? '-'}ms errors=${row.errors.length} api>=400=${row.net.length} drawers=${row.drawers.length} filters=${row.filters.length} problems=${row.problems.length}`,
+    );
+    for (const problem of row.problems) console.log(`  ${problem}`);
   }
-  await page.keyboard.press('Escape');
-  const closed = await page
-    .locator('.detail-drawer')
-    .first()
-    .waitFor({ state: 'detached', timeout: 8000 })
-    .then(() => true)
-    .catch(() => false);
-  // 焦点归还发生在抽屉节点移除之后（实测约 30 毫秒），所以移除后最多再等 1 秒；等不到记为 null。
-  const detached = performance.now();
-  const focusRestoredMs = closed
-    ? await page
-        .waitForFunction(
-          (value) => globalThis.document.activeElement?.getAttribute('data-e2e-trigger') === value,
-          tag,
-          { timeout: 1000 },
-        )
-        .then(() => Math.round(performance.now() - detached))
-        .catch(() => null)
-    : null;
-  return { tag, geo, focusInitial, tabs: tabStops, closed, focusRestoredMs, ...drawerAudit };
 }
 
 async function main() {
@@ -262,74 +253,23 @@ async function main() {
     tabs,
     routes: [],
   };
-  for (const route of requested) {
-    const row = { route };
-    const routeStarted = Date.now();
-    if (!navRoutes.includes(route)) {
-      // 账号导航里没有入口的路由不打开；显式点名时视为错误。
-      row.skipped = 'not-in-nav';
-      if (values.routes) row.ok = false;
-      report.routes.push(row);
-      console.log(
-        `${values.routes ? 'ERR' : 'SKIP'} ${route.padEnd(26)} (no navigation entry for this account)`,
-      );
-      continue;
-    }
-    try {
-      await openRoute(page, route);
-      row.readyMs = Date.now() - routeStarted;
-      row.audit = await page.evaluate(audit, { kind: 'page', route });
-      const slug = route.replaceAll('/', '__');
-      await page.screenshot({ path: join(shot.directory, `${slug}.png`), fullPage: true });
-      row.screenshot = join(shot.directory, `${slug}.png`);
-      row.triggers = await page.evaluate(pickTriggers, route);
-      row.drawers = [];
-      for (let index = 0; index < Math.min(row.triggers.length, maxDrawers); index += 1) {
-        const key = row.triggers[index];
-        const tag = `${slug}--${key
-          .replace(/^kt-/u, '')
-          .replace(/-open$/u, '')
-          .replace(/^text:/u, 'view')}`;
-        try {
-          row.drawers.push(await checkDrawer(page, route, index, tag, { tabs, shot }));
-        } catch (error) {
-          row.drawers.push({ tag, error: String(error).slice(0, 200) });
-          await page.keyboard.press('Escape').catch(() => undefined);
-        }
-      }
-      row.ok = true;
-    } catch (error) {
-      row.ok = false;
-      row.error = String(error).slice(0, 400);
-    }
-    row.errors = unique(errors);
-    row.net = unique(net.map((entry) => `${entry.method} ${entry.path} ${entry.status}`));
+  await walkRoutes(page, requested, report, { tabs, shot, maxDrawers }, () => {
+    const result = {
+      errors: unique(errors),
+      net: unique(net.map((entry) => `${entry.method} ${entry.path} ${entry.status}`)),
+    };
     errors = [];
     net = [];
-    report.routes.push(row);
-    const pageIssues = row.audit ? row.audit.issues.length : '-';
-    const drawerIssues = (row.drawers ?? []).reduce(
-      (total, drawer) => total + (drawer.issues?.length ?? 0),
-      0,
-    );
-    console.log(
-      `${row.ok ? 'ok ' : 'ERR'} ${route.padEnd(26)} ready=${String(row.readyMs ?? '-').padStart(5)}ms errors=${String(row.errors.length)} api>=400=${String(row.net.length)} pageIssues=${String(pageIssues)} drawerIssues=${String(drawerIssues)} drawers=${String((row.drawers ?? []).length)}${row.ok ? '' : ` :: ${row.error}`}`,
-    );
-  }
-  const reached = report.routes.filter((item) => item.ok).length;
-  const failed = report.routes.filter((item) => item.ok === false).length;
-  report.summary = {
-    requested: report.routes.length,
-    reached,
-    failed,
-    skipped: report.routes.filter((item) => item.skipped).length,
-  };
-  writeFileSync(shot.report, JSON.stringify(report, null, 2));
+    return result;
+  });
+  const result = evaluateReport(report);
+  writeFileSync(shot.report, JSON.stringify(result, null, 2));
   await browser.close();
+  const { reached, passed, failed, drawerErrors, filterErrors } = result.summary;
   console.log(
-    `--- ${preset.label}: ${reached}/${report.routes.length} routes reached, ${failed} failed; report ${shot.report}`,
+    `--- ${preset.label}: ${reached}/${requested.length} reached, ${passed} passed, ${failed} failed, drawerErrors=${drawerErrors}, filterErrors=${filterErrors}; report ${shot.report}`,
   );
-  return failed === 0 ? 0 : 1;
+  return result.exitCode;
 }
 
 main().then(
