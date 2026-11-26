@@ -113,6 +113,24 @@ def build_release_approval(candidate_sha, suffixes, approver, now):
     }
 
 
+def selected_recovery_approval(orchestrator, evidence_root, plan, legacy_sha, now, relative=None):
+    """An explicit current approval selects recovery mode; evidence alone never does.
+
+    The canonical file can be pre-provisioned by the release coordinator without
+    changing workflow inputs. A CLI override is still relative to that same bundle.
+    """
+    name = relative or 'migration-recovery-approval.json'
+    if relative is None and not (evidence_root / name).exists():
+        return None
+    path = orchestrator.evidence_file(evidence_root, name)
+    approval = json.loads(path.read_bytes())
+    require(approval.get('image_compatibility_mode') == 'compatible_recovery', 'Explicit recovery approval must select compatible_recovery')
+    orchestrator.check_approval(approval, plan, now)
+    artifact = orchestrator.evidence_file(evidence_root, 'compatible_recovery.json')
+    orchestrator.check_compatible_recovery(json.loads(artifact.read_bytes()), approval, plan, {'api_release_sha': legacy_sha}, evidence_root)
+    return approval
+
+
 def build_write_fence(api_release_sha, t_fence, t_obs, t_stop):
     require(SHA_RE.fullmatch(api_release_sha), 'api release sha must be 40 lowercase hex')
     return {
@@ -319,10 +337,13 @@ def main():
     parser.add_argument('--postgres-container', default='kingturf-erp-production-postgres-1')
     parser.add_argument('--expected-before', type=int, default=72)
     parser.add_argument('--expected-after', type=int, default=74)
+    parser.add_argument('--recovery-approval', help='Approval file relative to .release-migration-evidence; default migration-recovery-approval.json when provisioned')
     args = parser.parse_args()
 
     step = 'validate-inputs'
     fence_applied = False
+    migration_started = False
+    recovery_approval = None
     try:
         validate_candidate_sha(args.candidate_sha)
         suffixes = parse_suffixes(args.approved_suffixes)
@@ -362,6 +383,9 @@ def main():
 
             evidence = args.prod_root / '.release-migration-evidence'
             evidence.mkdir(parents=True, exist_ok=True)
+
+            step = 'recovery-approval'
+            recovery_approval = selected_recovery_approval(ro, evidence, plan, (args.prod_root / '.release-sha').read_text().strip(), utcnow(), args.recovery_approval)
 
             step = 'write-fence'
             t_fence = iso(utcnow())
@@ -469,7 +493,7 @@ def main():
             emit('data-preconditions', {'counts': counts})
 
             step = 'release-approval'
-            approval = build_release_approval(args.candidate_sha, suffixes, args.approver, utcnow())
+            approval = recovery_approval or build_release_approval(args.candidate_sha, suffixes, args.approver, utcnow())
             (evidence / 'release_approval.json').write_text(json.dumps(approval))
             emit('release-approval', {'approver': args.approver,
                                       'window_end_utc': approval['window_end_utc']})
@@ -483,6 +507,7 @@ def main():
             archive_terminal_state(args.prod_root, args.candidate_sha)
 
             step = 'execute'
+            migration_started = True
             executed = run_orchestrator(staged, 'execute', str(plan_path), str(evidence), str(migrations),
                                     str(args.prod_root / '.release-migration-state'), 'ignored',
                                     '--psql-argv-file', write_psql_argv_file(staged, argv))
@@ -506,6 +531,9 @@ def main():
     except Exception as failure:  # noqa: BLE001 - single fail-closed report path
         emit(step, {'error': str(failure)[:500]}, status='FAIL')
         if fence_applied:
+            if recovery_approval is not None and migration_started:
+                emit('compatible-recovery-required', {'api_state': 'stopped', 'write_fence': 'enabled', 'old_image_restart': 'NOT_ATTEMPTED'}, status='FAIL')
+                sys.exit(1)
             # Design gap fixed: this script stopped the API, so this script must
             # restore it on failure (schema untouched pre-execute; after a partial
             # execute the orchestrator guarantees no registration of failed work).

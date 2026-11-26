@@ -15,7 +15,16 @@ manifest=$(base64 -w0 "$bundle/migrations.json")
 # --candidate-sha lets the read-only preflight recognize the migration->application
 # handover state (registry FULLY_MATCHED on the candidate manifest, marker still on
 # the previous release, api deliberately stopped by the migration run).
-cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full --candidate-sha='$RELEASE_SHA'"
+forward_recovery=false
+source_state="$artifact/forward-source.json"
+if cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full --candidate-sha='$RELEASE_SHA'"; then
+  : # Healthy application and already-stopped handover retain the original sequence.
+else
+  # A failed preflight grants no stop permission. This independent read-only
+  # inspection requires an exact schema and a bound migration-startup failure.
+  (umask 077; cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full --candidate-sha='$RELEASE_SHA' --inspect-forward-recovery" > "$source_state")
+  forward_recovery=true
+fi
 # A unique run directory is retained on failure; no --delete and no source rsync.
 run_ssh "set -eu; test ! -L /data/kingturf-erp/.release-image-recovery; mkdir -p /data/kingturf-erp/.release-image-recovery; test ! -e '$remote'; mkdir -m 700 '$remote'"
 printf -v ssh_transport '%q ' ssh "${ssh_args[@]}"
@@ -38,15 +47,28 @@ with tarfile.open('bundle.tar.gz') as t:
 PYTHON
 REMOTE
 # The whole tar is already bound to runner SHA; assert control bytes separately too.
-for script in oci_image_transport application_release production_preflight; do
+for script in oci_image_transport application_release production_preflight release_orchestrator; do
   expected=$(sha256sum "scripts/$script.py" | cut -d ' ' -f 1)
   actual=$(run_ssh "sha256sum '$remote/controls/$script.py'" | cut -d ' ' -f 1)
   test "$expected" = "$actual"
 done
 mkdir -p "$artifact/results"
+if "$forward_recovery"; then
+  # The source record is private, checksum-bound, short-lived, and rechecked live
+  # by the fixed control before any stop. Import failure also precedes stopping.
+  source_sha=$(sha256sum "$source_state" | cut -d ' ' -f 1)
+  rsync -az --chmod=F600 -e "$ssh_transport" "$source_state" "$PROD_SSH_USER@$PROD_SSH_HOST:$remote/forward-source.json"
+  run_ssh "python3 '$remote/controls/oci_image_transport.py' import '$remote' > '$remote/transport.json'"
+  run_ssh "RELEASE_SHA='$RELEASE_SHA' RELEASE_CONTROL_SHA='$RELEASE_CONTROL_SHA' python3 '$remote/controls/application_release.py' prepare-forward-recovery '$remote' --source-sha256 '$source_sha'" > "$artifact/results/forward-preparation.jsonl"
+  # Preparation is never a preflight substitute. The strict original gate now
+  # observes a truly stopped API and an unchanged FULLY_MATCHED registry.
+  cat scripts/production_preflight.py | run_ssh "python3 - '/data/kingturf-erp' '$manifest' --require-full --candidate-sha='$RELEASE_SHA'"
+fi
 run_ssh "RELEASE_SHA='$RELEASE_SHA' RELEASE_CONTROL_SHA='$RELEASE_CONTROL_SHA' python3 '$remote/controls/application_release.py' precheck '$remote'" > "$artifact/results/precheck.jsonl"
 # Import and check byte identities while the recovery application remains healthy.
-run_ssh "python3 '$remote/controls/oci_image_transport.py' import '$remote' > '$remote/transport.json'"
+if ! "$forward_recovery"; then
+  run_ssh "python3 '$remote/controls/oci_image_transport.py' import '$remote' > '$remote/transport.json'"
+fi
 run_ssh "RELEASE_SHA='$RELEASE_SHA' RELEASE_CONTROL_SHA='$RELEASE_CONTROL_SHA' python3 '$remote/controls/application_release.py' backup '$remote' > '$remote/backup-report.json'"
 # Backup stops API only after import, then takes joint materials and rehearses the restore.
 # Switch consumes that frozen recovery point; failures recover the previous application.

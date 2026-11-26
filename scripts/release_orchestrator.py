@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
+import tempfile
 from datetime import datetime, timezone
 
 HERE = Path(__file__).resolve().parent
@@ -145,6 +147,23 @@ def check_approval(evidence, plan, now):
     window_end = parse_instant(require_value(evidence, 'window_end_utc', 'release_approval'))
     require(window_start <= now < window_end, 'GATE_FAILED:release_approval: maintenance window not active')
     require(0 < (window_end - window_start).total_seconds() <= MAX_WINDOW, f'GATE_FAILED:release_approval: window duration must be within 12 hours')
+    mode = evidence.get('image_compatibility_mode', 'legacy')
+    require(mode in ('legacy', 'compatible_recovery'), 'GATE_FAILED:release_approval: unknown image compatibility mode')
+    if mode == 'compatible_recovery':
+        binding = evidence.get('compatible_recovery')
+        require(isinstance(binding, dict) and set(binding) == set(RECOVERY_BINDING_KEYS), 'GATE_FAILED:release_approval: compatible recovery bindings incomplete')
+        for key in ('legacy_business_sha', 'recovery_release_sha', 'recovery_main_sha'):
+            require(isinstance(binding[key], str) and re.fullmatch(r'[0-9a-f]{40}', binding[key]), 'GATE_FAILED:release_approval: recovery source SHA malformed')
+        require(binding['legacy_business_sha'] != binding['recovery_release_sha'], 'GATE_FAILED:release_approval: compatible recovery must identify a distinct R')
+        for key in ('api_digest', 'web_digest'):
+            require(isinstance(binding[key], str) and re.fullmatch(r'sha256:[0-9a-f]{64}', binding[key]), 'GATE_FAILED:release_approval: recovery image digest malformed')
+        for key in ('target_manifest_sha256', 'recovery_bundle_sha256', 'report_sha256'):
+            require(isinstance(binding[key], str) and re.fullmatch(r'[0-9a-f]{64}', binding[key]), 'GATE_FAILED:release_approval: recovery artifact digest malformed')
+        require(binding['target_manifest_sha256'] == canonical_digest(plan['manifest']), 'GATE_FAILED:release_approval: recovery target manifest differs from plan')
+        ordered = gate.validate_candidate_manifest(plan['manifest'])
+        pending = plan['pending']
+        expected_suffix = ordered[len(ordered)-len(pending):] if pending else []
+        require([p['name'] for p in pending] == expected_suffix and all(p.get('checksum') == plan['manifest'].get(p['name']) for p in pending), 'GATE_FAILED:release_approval: recovery plan pending suffix/checksums inconsistent')
     return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest()
 
 
@@ -226,12 +245,161 @@ def check_backup_restore(evidence, fence_evidence, backup_root=None):
     require(bool(evidence.get('rpo_statement')) and bool(evidence.get('rto_statement')), 'GATE_FAILED:backup_restore: RPO/RTO statements missing')
 
 
-def check_image_compatibility(evidence):
+RECOVERY_BINDING_KEYS = ('legacy_business_sha', 'recovery_release_sha', 'recovery_main_sha', 'api_digest', 'web_digest', 'target_manifest_sha256', 'recovery_bundle_sha256', 'report_sha256')
+RECOVERY_STEPS = ('failed_candidate_switch', 'recovery_started_fenced', 'recovery_identity_health_ready_version', 'write_fence_disabled', 'authenticated_write', 'registry_and_state_unchanged')
+
+
+def canonical_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def artifact_digest(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024*1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def evidence_file(root, relative):
+    require(isinstance(relative, str) and relative.strip(), 'GATE_FAILED:compatible_recovery: artifact path missing')
+    path = Path(relative)
+    require(not path.is_absolute() and '..' not in path.parts and path.parts, 'GATE_FAILED:compatible_recovery: artifact path must stay relative')
+    base = Path(root).resolve()
+    current = base
+    for part in path.parts:
+        current = current / part
+        require(not current.is_symlink(), 'GATE_FAILED:compatible_recovery: artifact symlink forbidden')
+    require(base in current.resolve().parents and current.is_file(), 'GATE_FAILED:compatible_recovery: artifact must be an existing in-bundle regular file')
+    return current
+
+
+def recovery_source_history(source, binding, expected):
+    """Verify real Git objects against the approved main SHA, with no network.
+
+    The source .bundle is data, never an executable checkout. Hooks and global
+    Git configuration are disabled; only explicitly named local refs are fetched.
+    """
+    import os
+    env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_')}
+    env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT='0')
+    with tempfile.TemporaryDirectory(prefix='kingturf-recovery-source-') as directory:
+        def git(*args):
+            result = subprocess.run(['git', '-c', 'core.hooksPath='+os.devnull, '-c', 'protocol.file.allow=always', '-C', directory, *args], capture_output=True, env=env, timeout=60)
+            require(result.returncode == 0, 'GATE_FAILED:compatible_recovery: recovery Git source/main ancestry verification failed')
+            return result.stdout
+        git('init', '--bare', '--quiet')
+        git('bundle', 'verify', str(source))
+        git('fetch', '--quiet', '--no-tags', str(source), 'refs/heads/main:refs/heads/main', 'refs/heads/recovery:refs/heads/recovery')
+        require(git('rev-parse', 'refs/heads/main').decode().strip() == binding['recovery_main_sha'] and git('rev-parse', 'refs/heads/recovery').decode().strip() == binding['recovery_release_sha'], 'GATE_FAILED:compatible_recovery: recovery source refs differ from approval')
+        for sha in (binding['legacy_business_sha'], binding['recovery_release_sha']):
+            git('merge-base', '--is-ancestor', sha, binding['recovery_main_sha'])
+        prefix = 'packages/database/migrations/'
+        names = git('ls-tree', '-r', '--name-only', binding['recovery_release_sha'], '--', prefix).decode().splitlines()
+        require(names and all(name.startswith(prefix) for name in names), 'GATE_FAILED:compatible_recovery: recovery source migrations missing')
+        actual = {name.removeprefix(prefix): hashlib.sha256(git('show', binding['recovery_release_sha']+':'+name)).hexdigest() for name in names if name.endswith('.sql')}
+        require(actual == expected, 'GATE_FAILED:compatible_recovery: recovery Git source manifest differs from target')
+
+
+def recovery_bundle_metadata(path, binding, expected):
+    with tarfile.open(path, 'r:*') as archive:
+        members = archive.getmembers()
+        require(len(members) < 10000 and all(not Path(m.name).is_absolute() and '..' not in Path(m.name).parts and (m.isfile() or m.isdir()) for m in members), 'GATE_FAILED:compatible_recovery: invalid recovery bundle members')
+        def metadata(name):
+            matches = [m for m in members if m.name.removeprefix('./') == name]
+            require(len(matches) == 1 and matches[0].isfile() and matches[0].size <= 2*1024*1024, 'GATE_FAILED:compatible_recovery: recovery bundle metadata missing or ambiguous')
+            return json.loads(archive.extractfile(matches[0]).read())
+        release, manifest = metadata('release.json'), metadata('migrations.json')
+        require(isinstance(release, dict) and isinstance(manifest, dict), 'GATE_FAILED:compatible_recovery: R metadata must be JSON objects')
+        require(release.get('release_sha') == binding['recovery_release_sha'] and manifest == expected, 'GATE_FAILED:compatible_recovery: R bundle SHA or manifest mismatch')
+        # Preserve the distinction between the canonical target manifest and the
+        # release's digest over the actual migrations.json file bytes.
+        member = next(m for m in members if m.name.removeprefix('./') == 'migrations.json')
+        require(hashlib.sha256(archive.extractfile(member).read()).hexdigest() == release.get('migration_manifest_sha256'), 'GATE_FAILED:compatible_recovery: R bundle raw manifest digest mismatch')
+        for service in ('api', 'web'):
+            image = release.get('images', {}).get(service, {})
+            require(image.get('source') == 'ghcr.io/ivanzhao299/kingturf-erp-'+service and image.get('digest') == binding[service+'_digest'], 'GATE_FAILED:compatible_recovery: R image provenance/digest mismatch')
+
+
+def check_isolated_cli_receipt(state, binding, first_failure, files):
+    receipt = state.get('execution_receipt')
+    keys = {'kind', 'isolated', 'release_sha', 'target_manifest_sha256', 'command', 'exit_code', 'started_at_utc', 'finished_at_utc', 'log_sha256'}
+    require(isinstance(receipt, dict) and set(receipt) == keys and receipt.get('kind') == 'isolated_migration_cli_execution_v1' and receipt.get('isolated') is True, 'GATE_FAILED:compatible_recovery: actual isolated CLI receipt required')
+    require(receipt['release_sha'] == binding['recovery_release_sha'] and receipt['target_manifest_sha256'] == binding['target_manifest_sha256'], 'GATE_FAILED:compatible_recovery: CLI receipt R/manifest mismatch')
+    require(receipt['command'] == ['node', '--experimental-transform-types', 'packages/database/src/cli.ts', 'migrate'] and type(receipt['exit_code']) is int and receipt['exit_code'] == 0, 'GATE_FAILED:compatible_recovery: CLI command/exit receipt invalid')
+    require(isinstance(receipt['log_sha256'], str) and DIGEST_PATTERN.fullmatch(receipt['log_sha256']), 'GATE_FAILED:compatible_recovery: CLI execution log digest missing')
+    started = parse_instant(require_value(receipt, 'started_at_utc', 'compatible_recovery'))
+    finished = parse_instant(require_value(receipt, 'finished_at_utc', 'compatible_recovery'))
+    require(started <= finished <= first_failure, 'GATE_FAILED:compatible_recovery: CLI receipt time must precede failed switch')
+    require(canonical_digest(receipt) == files.get('.release-migration-state/explicit-cli-execution.json'), 'GATE_FAILED:compatible_recovery: CLI receipt bytes disagree with observed execution file')
+
+
+def check_compatible_recovery(evidence, approval, plan, fence, root):
+    binding = approval['compatible_recovery']
+    require(evidence.get('kind') == 'compatible_application_recovery_v1', 'GATE_FAILED:compatible_recovery: evidence kind invalid')
+    require(binding['legacy_business_sha'] == fence.get('api_release_sha'), 'GATE_FAILED:compatible_recovery: L differs from live write fence release')
+    require(binding['target_manifest_sha256'] == canonical_digest(plan['manifest']), 'GATE_FAILED:compatible_recovery: target differs from plan')
+    bundle = evidence_file(root, evidence.get('recovery_bundle_file'))
+    report_path = evidence_file(root, evidence.get('report_file'))
+    source = evidence_file(root, evidence.get('source_bundle_file'))
+    require(artifact_digest(bundle) == binding['recovery_bundle_sha256'], 'GATE_FAILED:compatible_recovery: R bundle bytes differ from approval')
+    require(report_path.stat().st_size <= 2*1024*1024, 'GATE_FAILED:compatible_recovery: report exceeds size limit')
+    report_bytes = report_path.read_bytes()
+    require(hashlib.sha256(report_bytes).hexdigest() == binding['report_sha256'], 'GATE_FAILED:compatible_recovery: report bytes differ from approval')
+    report = json.loads(report_bytes)
+    require(isinstance(report, dict) and report.get('kind') == 'compatible_application_recovery_drill_v1' and report.get('isolated') is True, 'GATE_FAILED:compatible_recovery: isolated drill report missing')
+    require(report.get('bindings') == {k: v for k, v in binding.items() if k != 'report_sha256'}, 'GATE_FAILED:compatible_recovery: report bindings differ from approval')
+    tested = parse_instant(require_value(report, 'tested_at_utc', 'compatible_recovery'))
+    require(tested <= parse_instant(approval['approved_at_utc']), 'GATE_FAILED:compatible_recovery: report postdates approval')
+    steps = report.get('steps')
+    require(isinstance(steps, list) and len(steps) == len(RECOVERY_STEPS), 'GATE_FAILED:compatible_recovery: drill steps incomplete')
+    moments = []
+    for name, step in zip(RECOVERY_STEPS, steps):
+        require(isinstance(step, dict) and step.get('name') == name and step.get('result') == 'PASS', 'GATE_FAILED:compatible_recovery: required drill step did not pass in order')
+        moments.append(parse_instant(require_value(step, 'at_utc', 'compatible_recovery')))
+    require(moments == sorted(moments) and moments[-1] <= tested, 'GATE_FAILED:compatible_recovery: drill step time order invalid')
+    require(report.get('runtime') == {'release_sha': binding['recovery_release_sha'], 'api_digest': binding['api_digest'], 'web_digest': binding['web_digest']}, 'GATE_FAILED:compatible_recovery: actual R runtime identity mismatch')
+    write = report.get('authenticated_write', {})
+    require(isinstance(write, dict) and write.get('authenticated') is True and type(write.get('status')) is int and 200 <= write['status'] < 300 and isinstance(write.get('operation'), str) and write['operation'].strip(), 'GATE_FAILED:compatible_recovery: successful authenticated write missing')
+    for key in ('registry', 'migration_state'):
+        values = report.get(key, {})
+        require(isinstance(values, dict), 'GATE_FAILED:compatible_recovery: observation must be a JSON object')
+        before, after = values.get('before_sha256'), values.get('after_sha256')
+        require(isinstance(before, str) and DIGEST_PATTERN.fullmatch(before) and before == after, 'GATE_FAILED:compatible_recovery: '+key+' hashes differ or are missing')
+    registry = report['registry']
+    require(registry.get('includes_applied_at') is True, 'GATE_FAILED:compatible_recovery: registry proof omits applied_at')
+    before, after = registry.get('before'), registry.get('after')
+    require(isinstance(before, list) and before and before == after and canonical_digest(before) == registry['before_sha256'], 'GATE_FAILED:compatible_recovery: registry observations empty, changed or inconsistent')
+    require(all(isinstance(row, dict) and set(row) == {'name', 'checksum', 'applied_at'} and isinstance(row['applied_at'], str) for row in before), 'GATE_FAILED:compatible_recovery: full registry observations required')
+    classification, pending = classify_registry([{k: row[k] for k in ('name', 'checksum')} for row in before], plan['manifest'])
+    require(classification == 'FULLY_MATCHED' and not pending, 'GATE_FAILED:compatible_recovery: observed registry differs from target')
+    for row in before:
+        require(parse_instant(row['applied_at']) <= tested, 'GATE_FAILED:compatible_recovery: invalid registry applied_at time')
+    state = report['migration_state']
+    before, after = state.get('before_files'), state.get('after_files')
+    require(isinstance(before, dict) and before and before == after and canonical_digest(before) == state['before_sha256'], 'GATE_FAILED:compatible_recovery: migration file observations empty, changed or inconsistent')
+    method = state.get('method', 'orchestrator')
+    require(method in ('orchestrator', 'explicit_cli'), 'GATE_FAILED:compatible_recovery: unknown isolated migration method')
+    execution_path = '.release-migration-state/explicit-cli-execution.json' if method == 'explicit_cli' else '.release-migration-state/orchestration-state.json'
+    require(execution_path in before and any(re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) for name in before), 'GATE_FAILED:compatible_recovery: migration execution record and plan observations required')
+    if method == 'explicit_cli':
+        check_isolated_cli_receipt(state, binding, moments[0], before)
+    for name, digest in before.items():
+        require(isinstance(digest, str) and DIGEST_PATTERN.fullmatch(digest) and (name == execution_path or re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) or re.fullmatch(r'\.release-migration-state/archive/[0-9a-f]{40}-[0-9]{8}T[0-9]{6}Z\.json', name)), 'GATE_FAILED:compatible_recovery: unexpected migration observation path or hash')
+    recovery_bundle_metadata(bundle, binding, plan['manifest'])
+    recovery_source_history(source, binding, plan['manifest'])
+
+
+def check_image_compatibility(evidence, *, approval=None, plan=None, fence=None, evidence_root=None):
+    if approval is not None and approval.get('image_compatibility_mode', 'legacy') == 'compatible_recovery':
+        check_compatible_recovery(evidence, approval, plan, fence, evidence_root)
+        return
     for key in ('api_digest', 'web_digest'):
         digest = require_value(evidence, key, 'image_compatibility')
         require(normalize_digest(digest) is not None, f'GATE_FAILED:image_compatibility: {key} malformed')
     old_app = evidence.get('old_app_on_new_schema')
     require(isinstance(old_app, dict) and old_app.get('verified') is True and isinstance(old_app.get('evidence'), str) and old_app['evidence'].strip(), 'GATE_FAILED:image_compatibility: old-application-on-new-schema not verified')
+    require(not old_app['evidence'].startswith('runner isolation smoke '), 'GATE_FAILED:image_compatibility: candidate smoke cannot prove old application compatibility')
 
 
 def check_data_preconditions(evidence, fence_evidence):
@@ -320,20 +488,25 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
     record('verify_plan', f"pending={len(plan['pending'])}")
 
     approval_sha = None
+    approval_evidence = None
     fence_evidence = None
     for name, check in GATES:
         try:
-            evidence = load_evidence(evidence_dir, name)
+            source_name = 'compatible_recovery' if name == 'image_compatibility' and approval_evidence.get('image_compatibility_mode') == 'compatible_recovery' else name
+            evidence = load_evidence(evidence_dir, source_name)
             if name == 'release_approval':
+                approval_evidence = evidence
                 approval_sha = check(evidence, plan, now)
             elif name == 'write_fence':
                 fence_evidence = evidence
                 check(evidence, now)
             elif name == 'backup_restore':
                 check(evidence, fence_evidence, backup_root)
+            elif name == 'image_compatibility':
+                check(evidence, approval=approval_evidence, plan=plan, fence=fence_evidence, evidence_root=evidence_dir)
             else:
                 check(evidence)
-        except (StopError, RuntimeError, ValueError, OSError) as error:
+        except (StopError, RuntimeError, ValueError, OSError, KeyError, TypeError, tarfile.TarError, subprocess.TimeoutExpired) as error:
             stop(name, str(error))
         record(name, 'evidence accepted')
     state['approval_sha256'] = approval_sha
@@ -364,6 +537,16 @@ def run_stages(plan, evidence_dir, session, migrations_dir, state_dir, now=None,
                                 capture_output=True, text=True, timeout=30)
             require(ps.returncode == 0 and not ps.stdout.strip(), 'FENCE_STATE_MISMATCH: declared api stopped but docker compose reports a running api service')
             record('fence_cross_check', 'docker compose confirms api service stopped')
+        if approval_evidence.get('image_compatibility_mode') == 'compatible_recovery':
+            require(release_root is not None and fence_evidence.get('method') == 'controlled_old_api_shutdown', 'FENCE_STATE_MISMATCH: compatible recovery requires a live controlled API shutdown')
+            legacy = approval_evidence['compatible_recovery']['legacy_business_sha']
+            require((Path(release_root) / '.release-sha').read_text().strip() == legacy, 'FENCE_STATE_MISMATCH: compatible recovery L differs from live marker')
+            observed = subprocess.run(['docker', 'inspect', 'kingturf-erp-production-api-1'], capture_output=True, text=True, timeout=30)
+            require(observed.returncode == 0, 'FENCE_STATE_MISMATCH: cannot inspect old API identity')
+            old_api = json.loads(observed.stdout)[0]
+            releases = [v.partition('=')[2] for v in old_api['Config']['Env'] if v.startswith('KINGTURF_RELEASE_SHA=')]
+            require(releases == [legacy] and old_api['State'].get('Running') is False and old_api['State'].get('Restarting') is False, 'FENCE_STATE_MISMATCH: compatible recovery L or actual stopped state differs')
+            record('recovery_source_cross_check', 'live stopped old release equals approved L')
         backends = session.query("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend' AND state<>'idle'")
         require(backends == ['0'], f'FENCE_STATE_MISMATCH: {backends[0] if backends else "?"} active non-orchestrator client backend(s) on the target database')
         record('quiescence_probe', 'active non-orchestrator client backends = 0')
@@ -450,20 +633,37 @@ def main():
                 print(json.dumps({'verdict': state['verdict']}))
             finally:
                 session.close()
+        elif len(args) == 5 and args[0] == 'check-compatible-recovery':
+            plan = json.loads(Path(args[1]).read_text())
+            approval = json.loads(Path(args[2]).read_text())
+            evidence_root = Path(args[3])
+            legacy_sha = args[4]
+            require(re.fullmatch(r'[0-9a-f]{40}', legacy_sha), 'GATE_FAILED:compatible_recovery: expected L must be a full SHA')
+            require(approval.get('image_compatibility_mode') == 'compatible_recovery', 'GATE_FAILED:compatible_recovery: explicit approval mode required')
+            check_approval(approval, plan, utcnow())
+            descriptor = evidence_file(evidence_root, 'compatible_recovery.json')
+            evidence = json.loads(descriptor.read_bytes())
+            require(isinstance(evidence, dict), 'GATE_FAILED:compatible_recovery: descriptor must be a JSON object')
+            check_compatible_recovery(evidence, approval, plan, {'api_release_sha': legacy_sha}, evidence_root)
+            print(json.dumps({'compatible_recovery': 'PASS', 'release_sha': plan['release_sha'], 'recovery_release_sha': approval['compatible_recovery']['recovery_release_sha'], 'target_manifest_sha256': approval['compatible_recovery']['target_manifest_sha256'], 'live_fence_verified': False}, sort_keys=True))
         elif len(args) == 3 and args[0] == 'check-evidence':
             plan = json.loads(Path(args[1]).read_text())
             evidence_root = Path(args[2])
             release_root = derive_release_root(evidence_root)
             now = utcnow()
             fence = load_evidence(evidence_root, 'write_fence')
+            approval = load_evidence(evidence_root, 'release_approval')
             for name, check in GATES:
-                ev = load_evidence(evidence_root, name)
+                source_name = 'compatible_recovery' if name == 'image_compatibility' and approval.get('image_compatibility_mode') == 'compatible_recovery' else name
+                ev = load_evidence(evidence_root, source_name)
                 if name == 'release_approval':
                     check(ev, plan, now)
                 elif name == 'write_fence':
                     check(ev, now)
                 elif name == 'backup_restore':
                     check(ev, fence, release_root / '.release-backups')
+                elif name == 'image_compatibility':
+                    check(ev, approval=approval, plan=plan, fence=fence, evidence_root=evidence_root)
                 else:
                     check(ev)
             check_data_preconditions(load_evidence(evidence_root, 'data_preconditions'), fence)
@@ -517,12 +717,13 @@ def main():
                                'registry <database-url> [--psql-argv-file file] | '
                                'execute <plan.json> <evidence-dir> <migrations> <state-dir> <database-url|psql-argv via --psql-argv-file> [--new-approval file] | '
                                'check-evidence <plan.json> <evidence-dir> | '
+                               'check-compatible-recovery <plan.json> <approval.json> <evidence-dir> <expected-legacy-sha> | '
                                'verify-images <evidence-dir> <env-file> | '
                                'postcheck <plan.json> <database-url> [--psql-argv-file file]')
     except StopError as error:
         print('orchestration STOPPED: ' + str(error), file=sys.stderr)
         sys.exit(2)
-    except RuntimeError as error:
+    except (RuntimeError, ValueError, OSError, KeyError, TypeError, tarfile.TarError, subprocess.TimeoutExpired) as error:
         print('orchestration refused: ' + str(error), file=sys.stderr)
         sys.exit(1)
 
