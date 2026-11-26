@@ -2,6 +2,7 @@ import type { AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiDependencies } from '../app.ts';
 import type { AuthorizedQuery } from '../policy.ts';
+import { blankableText } from '../blank-text.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
 type NcrRepository = Pick<NonNullable<ApiDependencies['complaints']>, 'createNcr'>;
@@ -65,7 +66,12 @@ export function ncrCreateRoutes(context: NcrContext): readonly RouteDefinition[]
               : {}),
             investigatorId: p.uuid(body.investigatorId, 'investigatorId'),
             quarantinedQuantity: p.decimal(body.quarantinedQuantity, 'quarantinedQuantity'),
-            temporaryContainment: p.string(body.temporaryContainment, 'temporaryContainment'),
+            // TD-OPS-006：临时遏制说明留空（空串或纯空白）存空串——列是 NOT NULL DEFAULT ''。
+            temporaryContainment: blankableText(
+              body.temporaryContainment,
+              'temporaryContainment',
+              p.string,
+            ),
             complaintExpectedVersion: p.integer(
               body.complaintExpectedVersion,
               'complaintExpectedVersion',

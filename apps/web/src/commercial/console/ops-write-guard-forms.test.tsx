@@ -1,13 +1,14 @@
-// TD-OPS-007（2026-11-26 项目所有者裁定，沿用现值）：投诉描述的界面侧口径。
-// 用真实 FormSection 挂载表单配置：不足 10 个字符被表单自己拦下并给出中文提示，恰好 10 个字符
-// 去首尾空白后发出。
+// TD-OPS-006 / TD-OPS-007（2026-11-26 项目所有者裁定）：质量与投诉表单对「留空」与「过短」的界面侧口径。
+// 用真实 FormSection 挂载表单配置：留空的可空字段不触发必填提示、提交能到达 onSubmit，载荷里
+// 留空字段是空串；投诉描述不足 10 个字符被表单自己拦下并给出中文提示。
 import { act } from 'preact/test-utils';
 import { expect, it } from 'vitest';
 import { h, render } from 'preact';
 import { FormSection } from '@kingturf/ui';
 import { installGlobalTestDom, type TestElement } from '../../../test/fixtures/preact-dom';
 import { operationsContext } from '../../../test/fixtures/operations-context';
-import { complaintCreate } from './complaint-forms';
+import { complaintCreate, complaintNcr } from './complaint-forms';
+import { newQualityPlan, qualityResult } from './quality-forms';
 import { trimOpsValues, type OpsForm } from './ops-form';
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -50,6 +51,82 @@ const attempt = async (form: OpsForm, values: Values = {}): Promise<Attempt> => 
 };
 const fieldNamed = (form: OpsForm, name: string) =>
   form.fields.find((field) => field.name === name);
+const required: Values = {
+  code: 'QP-2',
+  name: '计划',
+  itemVersionId: 'item',
+  inspectionStage: 'FINAL',
+  effectiveAt: '2026-11-26T12:00:00.000Z',
+  characteristicCode: 'LENGTH',
+  characteristicName: '长度',
+};
+const resultRequired: Values = { characteristicId: 'length', idempotencyKey: 'K-2' };
+const ncrRequired: Values = {
+  ncrNumber: 'NCR-1',
+  defectType: '起球',
+  affectedScope: '单批两卷',
+  investigatorId: 'employee-1',
+  evidenceReference: 'E-1',
+};
+
+it('TD-OPS-006: blank limits, result notes and temporary containment are optional and leave as empty strings', async () => {
+  const { context } = operationsContext();
+  const plan = newQualityPlan([]);
+  const result = qualityResult('inspection', [], () => new Date('2026-11-26T12:00:00.000Z'));
+  const ncr = complaintNcr(context, { version: 3 }, 'complaint-1');
+  const cases = [
+    { form: plan, blanks: ['lowerLimit', 'upperLimit'], values: required },
+    { form: result, blanks: ['notes'], values: resultRequired },
+    { form: ncr, blanks: ['temporaryContainment'], values: ncrRequired },
+  ] as const;
+  for (const { form, blanks, values } of cases) {
+    for (const name of blanks) expect(fieldNamed(form, name)?.required).not.toBe(true);
+    const outcome = await attempt(form, values);
+    expect(outcome.alert).toBe('');
+    if (!outcome.submitted) throw new Error(`submit did not reach onSubmit: ${form.title}`);
+    for (const name of blanks) expect(outcome.submitted[name]).toBe('');
+    // 留空字段在载荷里是空串（不是 null、也不是缺键）——与真库用例的请求体同一形态。
+    const [, body] = form.payload(trimOpsValues(outcome.submitted));
+    for (const name of blanks) {
+      const rows = body.characteristics as readonly Record<string, unknown>[] | undefined;
+      const raw = rows?.[0] ?? body;
+      expect(JSON.stringify(raw[name])).toBe('""');
+    }
+  }
+  expect(
+    JSON.stringify(
+      plan.payload(
+        trimOpsValues({
+          ...required,
+          samplingMethod: '全检',
+          acceptanceRule: '全部必检项通过',
+          lowerLimit: '',
+          upperLimit: '',
+        }),
+      ),
+    ),
+  ).toBe(
+    '["/api/v1/quality-plans",{"code":"QP-2","name":"计划","itemVersionId":"item","inspectionStage":"FINAL","samplingMethod":"全检","acceptanceRule":{"description":"全部必检项通过"},"effectiveAt":"2026-11-26T12:00:00.000Z","characteristics":[{"code":"LENGTH","name":"长度","dataType":"NUMERIC","lowerLimit":"","upperLimit":"","required":true,"instructions":""}],"publish":true}]',
+  );
+  expect(
+    JSON.stringify(
+      result.payload(
+        trimOpsValues({ ...resultRequired, measuredNumeric: '10.5', passed: 'true', notes: '' }),
+      ),
+    ),
+  ).toBe(
+    '["/api/v1/quality-inspections/inspection/results",{"characteristicId":"length","measuredNumeric":"10.5","passed":true,"notes":"","occurredAt":"2026-11-26T12:00:00.000Z","idempotencyKey":"K-2"}]',
+  );
+  expect(
+    JSON.stringify(
+      ncr.payload(
+        trimOpsValues({ ...ncrRequired, quarantinedQuantity: '0', temporaryContainment: '' }),
+      ),
+    ),
+  ).toBe(
+    '["/api/v1/complaints/complaint-1/ncrs",{"ncrNumber":"NCR-1","defectType":"起球","affectedScope":"单批两卷","investigatorId":"employee-1","quarantinedQuantity":"0","temporaryContainment":"","complaintExpectedVersion":3,"evidence":{"reference":"E-1"},"idempotencyKey":"CMP-FIXED-COMMAND-KEY"}]',
+  );
+});
 
 it('TD-OPS-007: the complaint description states the 10-character minimum; 9 are blocked by the form, 10 are sent trimmed', async () => {
   const { context } = operationsContext();

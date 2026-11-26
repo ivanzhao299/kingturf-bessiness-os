@@ -2,6 +2,7 @@ import { DomainError, type AuthorizationContext } from '@kingturf/domain';
 import type { PermissionKey } from '@kingturf/types';
 import type { ApiDependencies } from '../app.ts';
 import type { authorizeQuery } from '../policy.ts';
+import { blankableText } from '../blank-text.ts';
 import { defineRoute, type RouteDefinition } from './types.ts';
 
 type Repository = Pick<NonNullable<ApiDependencies['quality']>, 'recordResult'>;
@@ -87,7 +88,8 @@ export function qualityResultRecordRoutes(context: Context): readonly RouteDefin
             ? {}
             : { measuredText: context.parsers.string(body.measuredText, 'measuredText') }),
           passed: body.passed,
-          notes: context.parsers.string(body.notes ?? '', 'notes'),
+          // TD-OPS-006：备注留空（空串或纯空白）存空串——列是 NOT NULL；其余值的拒绝不变。
+          notes: blankableText(body.notes, 'notes', context.parsers.string),
           occurredAt: context.parsers.timestamp(body.occurredAt, 'occurredAt'),
           idempotencyKey: context.parsers.stableCode(
             context.parsers.string(body.idempotencyKey, 'idempotencyKey'),

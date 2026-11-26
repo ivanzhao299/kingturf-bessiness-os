@@ -243,6 +243,7 @@ export function complaintNcr(context: ComplaintContext, complaint: FinRow, id: s
         affectedScope: values.affectedScope,
         investigatorId: values.investigatorId,
         quarantinedQuantity: values.quarantinedQuantity,
+        // TD-OPS-006（2026-11-26 裁定）：临时遏制说明留空时发空串，端点原样入库（列是 NOT NULL）。
         temporaryContainment: values.temporaryContainment ?? '',
         complaintExpectedVersion: complaint.version,
         evidence: { reference: values.evidenceReference },

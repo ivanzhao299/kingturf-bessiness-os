@@ -201,7 +201,11 @@ describe('inline NCR creation route contracts', () => {
       'quarantinedQuantity must be non-negative',
     ],
     [{ quarantinedQuantity: 'bad', temporaryContainment: '' }, 'Invalid decimal'],
-    [{ temporaryContainment: '', complaintExpectedVersion: 0 }, 'temporaryContainment is required'],
+    // TD-OPS-006（2026-11-26 裁定）：空串不再被拒，这一行改用 null 保持「先于版本号」的优先级断言。
+    [
+      { temporaryContainment: null, complaintExpectedVersion: 0 },
+      'temporaryContainment is required',
+    ],
     [
       { complaintExpectedVersion: 0, evidence: false },
       'complaintExpectedVersion must be an integer between 1 and 1000000',
@@ -217,6 +221,29 @@ describe('inline NCR creation route contracts', () => {
     expect(await f.dispatch({ ...body, ...changed })).toEqual(invalid(message));
     noCalls(f);
   });
+  // TD-OPS-006（2026-11-26 项目所有者裁定）：临时遏制说明字符串形式留空 → 存空串（此前 400）；
+  // 键缺省、null 与其它非字符串值维持原拒绝，不放宽。
+  it.each(['', '   '])('temporaryContainment %j is stored as an empty string', async (value) => {
+    const f = fixture();
+    expect(await f.dispatch({ ...body, temporaryContainment: value })).toEqual(
+      response(201, result),
+    );
+    expect(f.repository.createNcr).toHaveBeenCalledExactlyOnceWith(
+      { ...input, temporaryContainment: '' },
+      repositoryContext,
+      correlationId,
+    );
+  });
+  it.each([undefined, null, false, 0, 3, {}, []])(
+    'temporaryContainment %j non-string keeps the original rejection',
+    async (value) => {
+      const f = fixture();
+      expect(await f.dispatch({ ...body, temporaryContainment: value })).toEqual(
+        invalid('temporaryContainment is required'),
+      );
+      noCalls(f);
+    },
+  );
   it.each([undefined, null, '', false, 0])(
     'responsible org %j omitted, not cleared',
     async (responsibleOrganizationId) => {
