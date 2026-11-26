@@ -321,6 +321,19 @@ def recovery_bundle_metadata(path, binding, expected):
             require(image.get('source') == 'ghcr.io/ivanzhao299/kingturf-erp-'+service and image.get('digest') == binding[service+'_digest'], 'GATE_FAILED:compatible_recovery: R image provenance/digest mismatch')
 
 
+def check_isolated_cli_receipt(state, binding, first_failure, files):
+    receipt = state.get('execution_receipt')
+    keys = {'kind', 'isolated', 'release_sha', 'target_manifest_sha256', 'command', 'exit_code', 'started_at_utc', 'finished_at_utc', 'log_sha256'}
+    require(isinstance(receipt, dict) and set(receipt) == keys and receipt.get('kind') == 'isolated_migration_cli_execution_v1' and receipt.get('isolated') is True, 'GATE_FAILED:compatible_recovery: actual isolated CLI receipt required')
+    require(receipt['release_sha'] == binding['recovery_release_sha'] and receipt['target_manifest_sha256'] == binding['target_manifest_sha256'], 'GATE_FAILED:compatible_recovery: CLI receipt R/manifest mismatch')
+    require(receipt['command'] == ['node', '--experimental-transform-types', 'packages/database/src/cli.ts', 'migrate'] and type(receipt['exit_code']) is int and receipt['exit_code'] == 0, 'GATE_FAILED:compatible_recovery: CLI command/exit receipt invalid')
+    require(isinstance(receipt['log_sha256'], str) and DIGEST_PATTERN.fullmatch(receipt['log_sha256']), 'GATE_FAILED:compatible_recovery: CLI execution log digest missing')
+    started = parse_instant(require_value(receipt, 'started_at_utc', 'compatible_recovery'))
+    finished = parse_instant(require_value(receipt, 'finished_at_utc', 'compatible_recovery'))
+    require(started <= finished <= first_failure, 'GATE_FAILED:compatible_recovery: CLI receipt time must precede failed switch')
+    require(canonical_digest(receipt) == files.get('.release-migration-state/explicit-cli-execution.json'), 'GATE_FAILED:compatible_recovery: CLI receipt bytes disagree with observed execution file')
+
+
 def check_compatible_recovery(evidence, approval, plan, fence, root):
     binding = approval['compatible_recovery']
     require(evidence.get('kind') == 'compatible_application_recovery_v1', 'GATE_FAILED:compatible_recovery: evidence kind invalid')
@@ -365,9 +378,14 @@ def check_compatible_recovery(evidence, approval, plan, fence, root):
     state = report['migration_state']
     before, after = state.get('before_files'), state.get('after_files')
     require(isinstance(before, dict) and before and before == after and canonical_digest(before) == state['before_sha256'], 'GATE_FAILED:compatible_recovery: migration file observations empty, changed or inconsistent')
-    require('.release-migration-state/orchestration-state.json' in before and any(re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) for name in before), 'GATE_FAILED:compatible_recovery: migration execution record and plan observations required')
+    method = state.get('method', 'orchestrator')
+    require(method in ('orchestrator', 'explicit_cli'), 'GATE_FAILED:compatible_recovery: unknown isolated migration method')
+    execution_path = '.release-migration-state/explicit-cli-execution.json' if method == 'explicit_cli' else '.release-migration-state/orchestration-state.json'
+    require(execution_path in before and any(re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) for name in before), 'GATE_FAILED:compatible_recovery: migration execution record and plan observations required')
+    if method == 'explicit_cli':
+        check_isolated_cli_receipt(state, binding, moments[0], before)
     for name, digest in before.items():
-        require(isinstance(digest, str) and DIGEST_PATTERN.fullmatch(digest) and (name == '.release-migration-state/orchestration-state.json' or re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) or re.fullmatch(r'\.release-migration-state/archive/[0-9a-f]{40}-[0-9]{8}T[0-9]{6}Z\.json', name)), 'GATE_FAILED:compatible_recovery: unexpected migration observation path or hash')
+        require(isinstance(digest, str) and DIGEST_PATTERN.fullmatch(digest) and (name == execution_path or re.fullmatch(r'\.staging/wave2-[0-9]+-[0-9]+/plan\.json', name) or re.fullmatch(r'\.release-migration-state/archive/[0-9a-f]{40}-[0-9]{8}T[0-9]{6}Z\.json', name)), 'GATE_FAILED:compatible_recovery: unexpected migration observation path or hash')
     recovery_bundle_metadata(bundle, binding, plan['manifest'])
     recovery_source_history(source, binding, plan['manifest'])
 

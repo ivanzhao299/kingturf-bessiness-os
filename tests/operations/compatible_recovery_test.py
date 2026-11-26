@@ -371,6 +371,57 @@ class CompatibleRecoveryEvidenceTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'step did not pass in order'):
             self.check()
 
+    def explicit_cli_receipt(self):
+        receipt = {'kind': 'isolated_migration_cli_execution_v1', 'isolated': True, 'release_sha': self.binding['recovery_release_sha'], 'target_manifest_sha256': self.binding['target_manifest_sha256'], 'command': ['node', '--experimental-transform-types', 'packages/database/src/cli.ts', 'migrate'], 'exit_code': 0, 'started_at_utc': '2026-11-26T09:00:00Z', 'finished_at_utc': '2026-11-26T09:10:00Z', 'log_sha256': hashlib.sha256(b'synthetic unit fixture log, not a real CLI execution').hexdigest()}
+        path = self.base/'.release-migration-state/explicit-cli-execution.json'
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(json.dumps(receipt, sort_keys=True).encode())
+        files = {'.release-migration-state/explicit-cli-execution.json': ro.artifact_digest(path), '.staging/wave2-100-1/plan.json': 'f'*64}
+        self.report['migration_state'] = {'method': 'explicit_cli', 'execution_receipt': receipt, 'before_files': files, 'after_files': files.copy(), 'before_sha256': ro.canonical_digest(files), 'after_sha256': ro.canonical_digest(files)}
+        self.write_report()
+        return receipt, path
+
+    def test_explicit_cli_receipt_checks_fixture_file_bytes_without_claiming_orchestrator(self):
+        receipt, path = self.explicit_cli_receipt()
+        self.assertEqual(ro.canonical_digest(receipt), ro.artifact_digest(path))
+        self.check()
+        self.assertNotIn('.release-migration-state/orchestration-state.json', self.report['migration_state']['before_files'])
+
+    def test_explicit_cli_receipt_rejects_missing_failed_wrong_or_late_execution(self):
+        receipt, _ = self.explicit_cli_receipt()
+        baseline = copy.deepcopy(self.report)
+        cases = [('exit_code', False), ('exit_code', 1), ('release_sha', 'f'*40), ('target_manifest_sha256', 'f'*64), ('command', ['node', 'different-cli', 'migrate']), ('finished_at_utc', '2026-11-26T09:25:00Z'), ('started_at_utc', '2026-11-26T09:15:00Z'), ('finished_at_utc', '2026-11-26T09:10:00+08:00'), ('log_sha256', '')]
+        for key, value in cases:
+            with self.subTest(key=key, value=value):
+                self.report = copy.deepcopy(baseline)
+                self.report['migration_state']['execution_receipt'][key] = value
+                self.write_report()
+                with self.assertRaises(RuntimeError):
+                    self.check()
+        self.report = copy.deepcopy(baseline)
+        self.report['migration_state'].pop('execution_receipt')
+        self.write_report()
+        with self.assertRaisesRegex(RuntimeError, 'actual isolated CLI receipt required'):
+            self.check()
+        self.report = copy.deepcopy(baseline)
+        self.report['migration_state']['before_files']['.release-migration-state/explicit-cli-execution.json'] = 'e'*64
+        self.report['migration_state']['after_files'] = self.report['migration_state']['before_files'].copy()
+        self.report['migration_state']['before_sha256'] = self.report['migration_state']['after_sha256'] = ro.canonical_digest(self.report['migration_state']['before_files'])
+        self.write_report()
+        with self.assertRaisesRegex(RuntimeError, 'CLI receipt bytes disagree'):
+            self.check()
+
+    def test_cli_path_cannot_replace_default_orchestrator_method_or_select_unknown_method(self):
+        self.explicit_cli_receipt()
+        for method in (None, 'orchestrator', 'cli'):
+            with self.subTest(method=method):
+                self.report['migration_state']['method'] = method
+                if method is None:
+                    self.report['migration_state'].pop('method')
+                self.write_report()
+                with self.assertRaises(RuntimeError):
+                    self.check()
+
     def test_bundle_manifest_must_match_target_despite_valid_tar_hash(self):
         self.write_bundle(manifest={'0001_one.sql': 'f'*64})
         self.write_report()
