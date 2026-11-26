@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { DEFECT_LIST, DEFECTS } from './write-smoke-catalog.mjs';
 import {
@@ -378,8 +378,8 @@ function finalize(report) {
     );
 }
 
-/** 把报告压成一张表打到标准输出，返回退出码。 */
-function printSummary(report) {
+/** 把报告压成一张表打到标准输出，返回退出码。导出供 write-smoke-report.test.mjs 断言分组。 */
+export function printSummary(report) {
   const mustSteps = report.flows.flatMap((item) =>
     item.steps.filter((step) => step.kind === 'must'),
   );
@@ -411,28 +411,63 @@ function printSummary(report) {
     if (problems.length > 0)
       console.log(`        ⚠ 页面异常 ${problems.length} 条，见 report.json`);
   }
-  // 已另有台账的条目单列一组：修复提交写在标题里；在被测提交上仍复现时如实显示「已复现」。
+  // 分组展示（TD-TEST-029）：未复现的条目按目录里有没有 fixedIn 分两组——有 fixedIn 的是已修复
+  // 缺陷的回归检查（在不带修复的旧提交上跑会照常「已复现」，这是特性不是噪音），没写 fixedIn 的
+  // 是基线上就未复现、没有单独修复提交的条目。复现或未能判定的按「是否另有台账」对账；
+  // --flows 没跑到、流程中止没执行或探针跳过的条目单列「未检查」——每条目录项都必须在摘要里出现。
+  const stateOf = (defect) => report.probed[defect.id];
+  const isClean = (defect) => stateOf(defect) === 'clean';
   const listCatalog = (title, pick) => {
     const entries = DEFECT_LIST.filter(pick);
     if (entries.length === 0) return;
     console.log(title);
     for (const defect of entries) {
-      const state = report.probed[defect.id];
+      const state = stateOf(defect);
+      // 标题里已写明修复提交的条目（WS-P2-07 等）不再重复「（短号 修复）」后缀。
+      const fixedBy =
+        defect.fixedIn && !defect.title.includes(defect.fixedIn.slice(0, 7))
+          ? `（${defect.fixedIn.slice(0, 7)} 修复）`
+          : '';
       console.log(
-        `  ${defect.id}  ${(state ? STATE_LABEL[state] : '未检查').padEnd(5, '　')} ${defect.title}`,
+        `  ${defect.id}  ${(state ? STATE_LABEL[state] : '未检查').padEnd(5, '　')} ${defect.title}${fixedBy}`,
       );
     }
   };
-  listCatalog('缺陷目录', (defect) => !defect.tracking);
-  listCatalog('已另有台账的条目（对账用）', (defect) => defect.tracking);
+  listCatalog('已修复、留作回归检查（未复现）', (defect) => isClean(defect) && defect.fixedIn);
+  listCatalog('基线即未复现、无修复提交', (defect) => isClean(defect) && !defect.fixedIn);
+  listCatalog('复现或未能判定的条目', (defect) => {
+    const state = stateOf(defect);
+    return state !== undefined && !isClean(defect) && !defect.tracking;
+  });
+  // 已另有台账的条目即使未检查也归对账组（与 HEAD 一致）；标题注明它的存在，免得读者以为漏条目。
+  const trackedUnchecked = count(
+    DEFECT_LIST,
+    (item) => stateOf(item) === undefined && Boolean(item.tracking),
+  );
+  listCatalog(
+    trackedUnchecked > 0
+      ? `未检查的条目（另有 ${trackedUnchecked} 条已另有台账、归对账组）`
+      : '未检查的条目',
+    (defect) => stateOf(defect) === undefined && !defect.tracking,
+  );
+  listCatalog('已另有台账的条目（对账用）', (defect) => !isClean(defect) && defect.tracking);
   const { defects } = report;
   const failedFlows = report.flows.length - passedFlows;
   const tracked = count(defects, (item) => item.tracking);
   const blocking = count(defects, (item) => item.severity !== 'P3');
   const code = failedFlows > 0 || blocking > 0 ? 1 : 0;
+  const cleanFixed = count(DEFECT_LIST, (item) => isClean(item) && Boolean(item.fixedIn));
+  const cleanBaseline = count(DEFECT_LIST, (item) => isClean(item) && !item.fixedIn);
+  // 未检查计数按「目录里没有探测结果」的条目算，含已另有台账、归在对账组的那一条；
+  // 「未检查的条目」分组不含它，两个数可能相差 1。
+  const unchecked = count(DEFECT_LIST, (item) => stateOf(item) === undefined);
   console.log(
     `退出码 ${code}：流程失败 ${failedFlows} 条；已复现 P1 ${count(defects, (item) => item.severity === 'P1')} 项、P2 ${count(defects, (item) => item.severity === 'P2')} 项、P3 ${count(defects, (item) => item.severity === 'P3')} 项` +
       `（其中另有台账 ${tracked} 项不计入本批新发现；退出码只看被测提交上是否复现）`,
+  );
+  console.log(
+    `未复现 ${cleanFixed + cleanBaseline} 项：已修复、留作回归检查（有 fixedIn）${cleanFixed} 项；` +
+      `基线即未复现、无修复提交 ${cleanBaseline} 项；未检查 ${unchecked} 项`,
   );
   return code;
 }
@@ -513,12 +548,15 @@ async function main() {
   return code;
 }
 
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error) => {
-    console.error(`write-smoke: ${String(error.message ?? error).slice(0, 600)}`);
-    process.exitCode = 1;
-  },
-);
+// 直接运行本文件才启动 main；被测试 import 时不执行。
+// 不用 import.meta.main：它在 engines 下限（Node 24.0/24.1）上不存在，守卫会静默失效。
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url)
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error) => {
+      console.error(`write-smoke: ${String(error.message ?? error).slice(0, 600)}`);
+      process.exitCode = 1;
+    },
+  );
