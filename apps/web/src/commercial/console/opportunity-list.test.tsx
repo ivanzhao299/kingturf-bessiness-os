@@ -49,7 +49,8 @@ const portsFor = (
     overdue: items.filter(
       (item) =>
         Boolean(item.expectedCloseDate) &&
-        !['WON', 'LOST'].includes(item.status ?? 'OPEN') &&
+        // TD-COMX-003：与 readiness.opportunityPipelineSummary 同口径，已取消不算逾期。
+        !['WON', 'LOST', 'CANCELLED'].includes(item.status ?? 'OPEN') &&
         String(item.expectedCloseDate).slice(0, 10) < today,
     ).length,
     closingSoon: 0,
@@ -98,6 +99,13 @@ describe('U3-COM-1 商机列表控制台', () => {
       isOpportunityOverdue(opportunity({ status: 'WON', expectedCloseDate: '1999-01-01' }), today),
     ).toBe(false);
     expect(isOpportunityOverdue(opportunity({ expectedCloseDate: undefined }), today)).toBe(false);
+    // TD-COMX-003：已取消的商机不算逾期（2026-11-26 项目所有者裁定，行为变更）。
+    expect(
+      isOpportunityOverdue(
+        opportunity({ status: 'CANCELLED', expectedCloseDate: '1999-01-01' }),
+        today,
+      ),
+    ).toBe(false);
   });
 
   it('无 create 权限时不出现新建入口（权限门保持）', () => {

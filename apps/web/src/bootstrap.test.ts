@@ -814,6 +814,36 @@ it('prioritizes overdue and incomplete active opportunities', () => {
   ).toEqual({ active: 2, overdue: 1, closingSoon: 1, customerMissing: 1 });
 });
 
+// TD-COMX-003：已取消的商机不算逾期（2026-11-26 项目所有者裁定，行为变更）；
+// 其余口径不变——CANCELLED 仍计入 active，未过期的在途商机不计逾期。
+it('已取消的商机不计入逾期数（CANCELLED 与 WON/LOST 同口径）', () => {
+  expect(
+    opportunityPipelineSummary(
+      [
+        {
+          id: 'cancelled-late',
+          status: 'CANCELLED',
+          expectedCloseDate: '2026-08-01',
+          customerId: 'customer-9',
+        },
+        {
+          id: 'open-late',
+          status: 'OPEN',
+          expectedCloseDate: '2026-08-01',
+          customerId: 'customer-9',
+        },
+        {
+          id: 'open-future',
+          status: 'OPEN',
+          expectedCloseDate: '2026-09-01',
+          customerId: 'customer-9',
+        },
+      ],
+      '2026-08-25',
+    ),
+  ).toEqual({ active: 3, overdue: 1, closingSoon: 1, customerMissing: 0 });
+});
+
 it('exposes the first missing prerequisite in the CTR-to-quote chain', () => {
   expect(
     quoteWorkflowReadiness(

@@ -1,5 +1,6 @@
 import type { Opportunity } from './types';
 import { recordText } from '../shared/business-format';
+import { isOpportunityOverdue } from './opportunity-overdue';
 
 export type ContractOrderReadinessStep = Readonly<{
   key: 'quote' | 'credit' | 'contract' | 'order';
@@ -61,10 +62,8 @@ export function opportunityPipelineSummary(
   const horizonDate = horizon.toISOString().slice(0, 10);
   return {
     active: active.length,
-    overdue: active.filter(
-      (item) =>
-        Boolean(item.expectedCloseDate) && String(item.expectedCloseDate).slice(0, 10) < today,
-    ).length,
+    // 逾期口径统一走 isOpportunityOverdue（TD-COMX-003：已取消的商机不算逾期）。
+    overdue: active.filter((item) => isOpportunityOverdue(item, today)).length,
     closingSoon: active.filter((item) => {
       const date = item.expectedCloseDate?.slice(0, 10);
       return Boolean(date && date >= today && date <= horizonDate);
