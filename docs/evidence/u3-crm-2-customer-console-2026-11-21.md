@@ -3,6 +3,8 @@
 > 授权链：主协调 U3-CRM-1-CP 复核放行 + U3-CRM-2 指令；旧 vanilla customer-records
 > 客户区退役沿用裁定 17 语义（customer-records.ts 保留客户区装配——本批移除其客户
 > 列表部分改挂控制台；customer360-view.ts 独立保留）。
+>
+> **更正（2026-11-26）**：上面这句与当时代码不符。本批提交 `779c32f` 时 `appendCustomerConsole` 没有任何调用点，`crm/records.ts` 仍在调用 `appendCustomerList` / `appendCustomerDetail`，即客户路由仍渲染 vanilla 视图；控制台挂载与 vanilla 渲染退役由 `49ab218`（2026-11-21，`crm/records.ts:19`）完成，并随第一次发布 `d1dc0f3` 上线。两个旧视图文件已由 `fb65149`（2026-11-26，CRM2 批）删除。依据提交：`779c32f`、`49ab218`、`fb65149`；见 [crm-followup-credit-2026-11-26](crm-followup-credit-2026-11-26.md) 第 5 节。
 
 ## 1. Fastify customers 端点组（registry 认领 +4，累计 36）
 
@@ -20,6 +22,7 @@
 - `customer-console.tsx` + `customer-ports.ts`：客户主列表（状态筛选/名称编号检索/客户端分页）+ 详情抽屉（打开即异步拉取客户 360：联系人/活动时间线/商机关联）+ 新建客户（POST 桥轨，tags 逗号切分为字符串数组与 legacy strings 解析同构）+ 刷新。
 - G2 压平：360 详情加载提取为模块级 `loadDetail` 助手（Signal bundle 参数化）；G5：fail 助手模块级化。
 - 退役：`customer-records.ts` 客户列表部分改由控制台承载（customer360-view.ts 独立视图保留，bootstrap.ts 行数不变）。
+  - 更正（2026-11-26）：`779c32f` 时并未退役，两份 vanilla 视图仍在生产挂载；退役发生在 `49ab218`，文件删除在 `fb65149`（见文首更正）。
 
 ## 3. 测试
 

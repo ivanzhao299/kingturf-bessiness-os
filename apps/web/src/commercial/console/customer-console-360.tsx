@@ -54,8 +54,11 @@ export type Customer360State = Readonly<{
   /** 新增分区（商机漏斗 / 关联线索）无对应读权限时不渲染：服务端此时恒返回空，呈现「暂无」会误导。 */
   canReadOpportunities: boolean;
   canReadLeads: boolean;
-  /** 信用概要：undefined = 无数据通道或加载失败（不渲染），null = 无信用记录。 */
+  /** 信用概要：undefined = 无数据通道（不渲染），null = 无信用记录。 */
   credit: CustomerCreditSummary | null | undefined;
+  /** TD-CRM-006：信用概要加载失败的原因（空串 = 无失败），只显示在信用概要卡内。 */
+  creditError: string;
+  retryCredit: () => void;
 }>;
 
 type LinkKind = 'opportunity' | 'lead';
@@ -447,8 +450,35 @@ const RelatedSection = ({
   </SectionCard>
 );
 
-/** 信用概要：额度/敞口/使用率进度条 + 最近一次信用决定；无记录时给出空态。 */
-const CreditSection = ({ credit }: Readonly<{ credit: CustomerCreditSummary | null }>) => {
+/**
+ * 信用概要：额度/敞口/使用率进度条 + 最近一次信用决定；无记录时给出空态。
+ * TD-CRM-006：加载失败时卡片内显示简短原因与重试入口（不吞错，也不占用 360 其它分区的错误位）。
+ */
+const CreditSection = ({
+  credit,
+  error,
+  onRetry,
+}: Readonly<{
+  credit: CustomerCreditSummary | null;
+  error: string;
+  onRetry: () => void;
+}>) => {
+  if (error !== '')
+    return (
+      <SectionCard title="信用概要" testId="kt-customer-credit">
+        <p class="console-error" role="alert" data-testid="kt-customer-credit-error">
+          {error}
+        </p>
+        <button
+          type="button"
+          class="secondary compact"
+          data-testid="kt-customer-credit-retry"
+          onClick={onRetry}
+        >
+          重试
+        </button>
+      </SectionCard>
+    );
   if (credit === null || isCreditSummaryEmpty(credit))
     return (
       <SectionCard title="信用概要" testId="kt-customer-credit">
@@ -463,18 +493,18 @@ const CreditSection = ({ credit }: Readonly<{ credit: CustomerCreditSummary | nu
     <SectionCard title="信用概要" testId="kt-customer-credit">
       <div class="crm-credit-rows">
         <p class="crm-credit-row">
-          <span>信用额度</span>
+          <span>最新生效额度</span>
           <strong data-testid="kt-customer-credit-limit">{moneyOf(credit.limit)}</strong>
         </p>
         <p class="crm-credit-row">
-          <span>已用敞口</span>
+          <span>最近评估敞口</span>
           <strong data-testid="kt-customer-credit-exposure">{moneyOf(credit.exposure)}</strong>
         </p>
       </div>
       <div
         class="crm-meter"
         role="progressbar"
-        aria-label="额度使用率"
+        aria-label="参考使用率"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={bar}
@@ -484,7 +514,7 @@ const CreditSection = ({ credit }: Readonly<{ credit: CustomerCreditSummary | nu
       </div>
       <p class="crm-credit-foot">
         <span data-testid="kt-customer-credit-usage">
-          额度使用率 {percent === null ? '—' : `${String(percent)}%`}
+          参考使用率 {percent === null ? '—' : `${String(percent)}%`}
         </span>
         {credit.decision === null ? null : (
           <span>
@@ -496,6 +526,7 @@ const CreditSection = ({ credit }: Readonly<{ credit: CustomerCreditSummary | nu
           </span>
         )}
       </p>
+      <p class="console-hint">额度取最新生效记录；敞口为最近一次评估时的金额。</p>
     </SectionCard>
   );
 };
@@ -564,7 +595,14 @@ export const Customer360Detail = (state: Customer360State) => {
           ))}
         </RelatedSection>
       ) : null}
-      {credit === undefined ? null : <CreditSection credit={credit} />}
+      {/* TD-CRM-006：无数据通道时整卡不渲染；加载失败时仍渲染，由卡内显示原因与重试入口。 */}
+      {credit === undefined && state.creditError === '' ? null : (
+        <CreditSection
+          credit={credit ?? null}
+          error={state.creditError}
+          onRetry={state.retryCredit}
+        />
+      )}
     </div>
   );
 };

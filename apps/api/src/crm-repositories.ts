@@ -185,10 +185,24 @@ export type LeadPageFilter = Readonly<{
   status?: string;
   pool?: boolean;
 }>;
+// TD-CRM-003：线索行 + 最近一次活动时间（加性键排在既有键之后；无活动或无活动读权限为 null）。
+// 既有键的顺序与取值和 lead() 逐字节相同（legacy listLeads 与 lead() 本身不动）。
+export type LeadPageItem = ReturnType<typeof lead> & Readonly<{ lastActivityAt: string | null }>;
+// TD-CRM-003：最近一次活动的可见范围——路由按 customer-activity:read 授权给出（项目所有者
+// 2026-11-26 确认按来源域读权限门控）；null = 无活动读权限，不聚合，字段恒为 null。
+export type LeadActivityGrant = Readonly<{
+  scopes: readonly DataScope[];
+  anchors: readonly ScopeAnchor[];
+}>;
 export type LeadPage = Readonly<{
-  items: readonly ReturnType<typeof lead>[];
+  items: readonly LeadPageItem[];
   nextCursor: string | null;
 }>;
+type LeadActivityRow = LeadRow & Readonly<{ last_activity_at: string | Date | null }>;
+const leadPageItem = (r: LeadActivityRow): LeadPageItem => ({
+  ...lead(r),
+  lastActivityAt: r.last_activity_at === null ? null : timestamp(r.last_activity_at),
+});
 
 export class PostgresCrmRepository {
   public constructor(private readonly db: Db) {}
@@ -508,11 +522,16 @@ export class PostgresCrmRepository {
 
   // U3-CRM-1（ADR-0015）：线索 keyset cursor 分页只读（additive）——排序键
   // (created_at,id) 与 listLeads 一致；pool 过滤同 CRM_SCOPE_POOL 语义。
+  // TD-CRM-003：每行附最近一次活动时间（该线索名下活动的最大 occurred_at）。聚合只统计
+  // 活动读授权范围内可见客户的活动（与 customer360 / listActivities 的客户可见性同谓词），
+  // 且只对本语句按线索 DataScope 筛出的行求值——看不到的线索不产生任何活动时间。
+  // 无活动读授权（activity=null）时可见范围谓词为 FALSE，不产生任何活动时间。
   public async listLeadPage(
     actor: Actor,
     scopes: readonly DataScope[],
     anchors: readonly ScopeAnchor[],
     filter: LeadPageFilter,
+    activity: LeadActivityGrant | null = null,
   ): Promise<LeadPage> {
     const authorized = recordScopeSql(
       scopes,
@@ -536,16 +555,27 @@ export class PostgresCrmRepository {
         `(l.created_at,l.id)>(SELECT x.created_at,x.id FROM leads x WHERE x.tenant_id=$1 AND x.id=${parameter}::uuid)`,
       );
     }
+    // TD-CRM-003：活动可见范围谓词（共享 recordScopeSql，不复制 DataScope）；参数续在筛选参数之后、
+    // LIMIT 之前编号。无授权 → 作用域为空 → FALSE。
+    const scoped = recordScopeSql(
+      activity?.scopes ?? [],
+      activity?.anchors ?? [],
+      actor,
+      'act_c',
+      values.length + 1,
+      CRM_SCOPE,
+    );
+    values.push(...scoped.values);
     const limit = Math.min(Math.max(filter.limit, 1), 100);
     values.push(limit + 1);
     const rows = (
-      await this.db.query<LeadRow>(
-        `SELECT l.* FROM leads l WHERE l.tenant_id=$1 AND l.deleted_at IS NULL AND ${predicate}${clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : ''} ORDER BY l.created_at,l.id LIMIT $${String(values.length)}`,
+      await this.db.query<LeadActivityRow>(
+        `SELECT l.*,(SELECT max(a.occurred_at) FROM customer_activities a WHERE a.tenant_id=l.tenant_id AND a.lead_id=l.id AND EXISTS(SELECT 1 FROM customers act_c WHERE act_c.id=a.customer_id AND act_c.tenant_id=a.tenant_id AND act_c.deleted_at IS NULL AND ${scoped.sql})) AS last_activity_at FROM leads l WHERE l.tenant_id=$1 AND l.deleted_at IS NULL AND ${predicate}${clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : ''} ORDER BY l.created_at,l.id LIMIT $${String(values.length)}`,
         values,
       )
     ).rows;
     return {
-      items: rows.map(lead),
+      items: rows.map(leadPageItem),
       nextCursor: rows.length > limit ? (rows[limit - 1]?.id ?? null) : null,
     };
   }

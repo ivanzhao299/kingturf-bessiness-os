@@ -5,6 +5,9 @@
 // 只读（findLead）；POST 创建 = legacy leadCreateRoutes 同解析链（leadCreate 导出
 // 助手复用）；PUT state = 现代化统一动作端点（action transition|assign|reassign|
 // release|claim 分派 legacy lead-commands/lead-claim 同链）。
+// TD-CRM-003：GET 列表每行追加加性键 lastActivityAt（线索名下最近一次活动时间）——按来源域
+// 读权限门控：账号同时具备线索读权限与 customer-activity:read 才聚合（项目所有者
+// 2026-11-26 确认）；既有键的顺序与取值不变，legacy 轨不受影响。
 import { z } from 'zod';
 import { authorizeQuery } from '../../policy.ts';
 import {
@@ -16,7 +19,7 @@ import {
   string,
   uuid,
 } from '../../app-values.ts';
-import type { LeadPage, LeadPageFilter } from '../../crm-repositories.ts';
+import type { LeadActivityGrant, LeadPage, LeadPageFilter } from '../../crm-repositories.ts';
 import type { FastifyRouteGroupApp, FastifyRouteScope } from './registry.ts';
 import type { ApiDependencies, ApiRequest } from '../../app.ts';
 import type { LeadStatus, PermissionKey } from '@kingturf/types';
@@ -41,6 +44,12 @@ const LEAD_ROW_SCHEMA = z
     version: z.number(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    // TD-CRM-003：ownerOrganizationId 是既有行键，此前靠 looseObject 透传（序列化时排在全部
+    // 声明键之后、即末尾）。这里按它在线上的既有位置显式声明，使下面的加性键真正排在末尾——
+    // 改前的响应 JSON 是改后响应的字节前缀。取值与校验不变（恒为字符串或 null）。
+    ownerOrganizationId: z.string().nullable(),
+    // TD-CRM-003 加性键：线索名下最近一次活动时间（looseObject 透传；字段白名单裁剪同其余键）。
+    lastActivityAt: z.string().nullable(),
   })
   .partial();
 const listQuerySchema = z.object({
@@ -97,6 +106,21 @@ export function registerLeadRoutes(app: FastifyRouteGroupApp, scope: FastifyRout
     return repository;
   };
 
+  // TD-CRM-003：最近一次活动按来源域读权限门控（项目所有者 2026-11-26 确认）——
+  // lead:read 与 customer-activity:read 均存在且作用域非空才聚合（assertPermission 同口径，
+  // U3-MFG-1 关联聚合先例）。公海列表仍只需 lead-pool:read 可读，缺少 lead:read 时只隐藏跟进时间。
+  const activityGrant = (): LeadActivityGrant | null => {
+    const leadRead = scope.authorization.permissions.get('lead:read');
+    if (leadRead === undefined || leadRead.scopes.length === 0) return null;
+    const grant = scope.authorization.permissions.get('customer-activity:read');
+    return grant !== undefined && grant.scopes.length > 0
+      ? {
+          scopes: grant.scopes,
+          anchors: scope.authorization.scopeAnchors?.get('customer-activity:read') ?? [],
+        }
+      : null;
+  };
+
   const listRoute = (path: string, pool: boolean) => {
     app.get(
       path,
@@ -119,6 +143,7 @@ export function registerLeadRoutes(app: FastifyRouteGroupApp, scope: FastifyRout
           grant.scopes,
           grant.anchors,
           filter,
+          activityGrant(),
         );
         return {
           items: result.items.map((item) =>

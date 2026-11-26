@@ -22,6 +22,7 @@ import type { PolicyConsolePorts } from './console/policy-ports';
 import type { CreditConsolePorts, CreditRow } from './console/credit-ports';
 import type { LeadConsolePorts } from './console/lead-ports';
 import type { CustomerConsolePorts } from './console/customer-ports';
+import { creditPortFor } from './console/customer-credit-port';
 import { setAppRoute } from '../shared/navigation';
 import type { ConsoleMountPorts } from './console/mount';
 
@@ -403,6 +404,8 @@ export function appendCustomerConsole(content: HTMLElement, controller: CrmContr
     permissions: controller.permissions,
     initialCustomers: controller.customers,
     opportunities: [],
+    // TD-CRM-006：信用概要经既有信用端点直连；仅 credit:read 才注入端口（无权限不请求、不显示）。
+    ...creditPortFor(controller.permissions, controller),
     textValue: (value, fallback = '') =>
       typeof value === 'string' || typeof value === 'number' ? String(value) : fallback,
     submit: async (_path, payload, method) => {

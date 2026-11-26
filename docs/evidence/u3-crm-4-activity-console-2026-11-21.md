@@ -24,6 +24,8 @@ Date→ISO 归一化：pg timestamptz 经仓储为 Date 对象，GET 轨响应�
 - **活动类型筛选**：≥2 种类型时呈现下拉（选项自当前活动派生、展示经 businessEventLabel）；选择后仅保留匹配行；切换客户时重置。
 - **创建入口**：`customer-activity:create` 门 + 「添加活动」表单（类型下拉拜访/电话/邮件/展会、摘要必填、发生时间留空为当前时间）——经 `controller.createActivity`（本批 additive：CrmApi.createActivity → POST `/api/v1/customers/:id/activities` 同一 URL，生产 dispatch 由 Fastify 桥轨认领；幂等键经既有 requestId 面）+ 360 刷新联动。
 
+> **更正（2026-11-26）**：本节的活动类型筛选与「添加活动」创建入口同样位于 `appendCustomerConsole`，该函数在提交 `25ac4f0` 时没有调用点（挂载是 `49ab218`，2026-11-21），因此在本批提交时生产不可达，`49ab218` 之后才可见。端点组、契约 66/66 与 legacy POST 轨不受影响。另：此处两处「添加活动」表单载荷恒写 `leadId: null` 的现状与 TD-CRM-008（活动挂线索，已裁定另批实施）见 [crm-followup-credit-2026-11-26](crm-followup-credit-2026-11-26.md) 第 3.1 与第 11 节。依据提交：`25ac4f0`、`49ab218`。
+
 ## 3. 测试
 
 - fastify inject `activities.test.ts`（6 例：列表直通+Date 归一化+作用域门先行、type 筛选、详情命中+404 信封+非 uuid 400 先于仓储、POST legacy 五字段+幂等键透传、负例六类 legacy 消息、DomainError 映射）。
