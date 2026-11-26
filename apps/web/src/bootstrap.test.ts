@@ -560,6 +560,29 @@ it('keeps product pages on one content rail and renders business records as dens
   expect(styles).toContain('grid-template-columns: minmax(0, 1fr);');
 });
 
+it('keeps the commission next-action note out of the two-column header row (TD-UI-005)', () => {
+  // TD-UI-005（真浏览器量测发现；mini-DOM 不算样式，只能在样式表层守）：.qtc-card 的两列是给
+  // 「金额 | 状态徽章」这一行用的；提示与台账被自动排进这两列并同行时，auto 列吃满宽度、第一列只剩 0。
+  const styles = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+  const card = readBoundSource(
+    './commercial/commission-ledger.ts',
+    'export function createCommissionCard',
+  );
+  // 结构前提：提示与台账是同一张卡片网格里相邻的两个子项。
+  expect(card).toContain("el('article', 'qtc-card commission-card')");
+  expect(card).toMatch(
+    /el\('p', 'next-action-note', `下一步：\$\{commissionNextAction\(state\)\}`\),\s*\);\s*const timeline = el\('ol', 'commission-ledger'\);/u,
+  );
+  // 非桌面档两者各占整行。
+  expect(styles).toMatch(
+    /@media \(max-width: 1023px\) \{\s*\.qtc-card \.next-action-note,\s*\.qtc-card \.commission-ledger \{\s*grid-column: 1 \/ -1;/u,
+  );
+  // 桌面档保留并排，第一列有下限：台账再长也只让自己的列变窄。
+  expect(styles).toMatch(
+    /@media \(min-width: 1024px\) \{\s*\.qtc-card\.commission-card \{\s*grid-template-columns: minmax\(16%, 1fr\) auto;/u,
+  );
+});
+
 it('provides product-grade register controls for high-frequency business records', () => {
   const workspaceSource = [
     readBoundSource('./bootstrap.ts', 'export function commercialWorkspaceStructure'),
