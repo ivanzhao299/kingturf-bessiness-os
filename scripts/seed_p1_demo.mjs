@@ -986,9 +986,13 @@ await ensureMrpPolicy(yarn.id, 'BUY', '500', '1000', '500', 14);
 await ensureMrpPolicy(backing.id, 'BUY', '1000', '1000', '1000', 10);
 const mrpDemands = await list('/api/v1/mrp-demands');
 async function ensureDemand(sourceType, sourceId, requiredAt, quantity, priority) {
+  // TD-MFG-012：来源类型以 SALES_ORDER 为准，SALES-ORDER 是接口仍接受的历史别名。接口把别名
+  // 归一存储为 SALES_ORDER，所以查找时两种拼写都算已有，升级前灌过的库重灌不会重复创建。
+  const sameSource = (stored, wanted) =>
+    stored === wanted || (wanted === 'SALES_ORDER' && stored === 'SALES-ORDER');
   const existing = mrpDemands.find(
     (item) =>
-      (item.source_type ?? item.sourceType) === sourceType &&
+      sameSource(item.source_type ?? item.sourceType, sourceType) &&
       (item.source_id ?? item.sourceId) === sourceId &&
       (item.required_at ?? item.requiredAt) === requiredAt,
   );
@@ -999,7 +1003,7 @@ async function ensureDemand(sourceType, sourceId, requiredAt, quantity, priority
   });
 }
 await ensureDemand('FROZEN-DEMO', customer.id, '2026-08-20', '100', 1);
-await ensureDemand('SALES-ORDER', order.id, '2026-11-15', '8000', 10);
+await ensureDemand('SALES_ORDER', order.id, '2026-11-15', '8000', 10);
 let mrpRun = (await list('/api/v1/mrp-runs')).find(
   (item) => (item.run_number ?? item.runNumber) === 'MRP-KT-2026-001',
 );

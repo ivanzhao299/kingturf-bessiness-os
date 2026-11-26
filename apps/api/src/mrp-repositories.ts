@@ -15,6 +15,11 @@ const hash = (value: unknown) => createHash('sha256').update(canonicalize(value)
 const hashSnapshot = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const json = (value: unknown) => value as JsonObject;
+// TD-MFG-012（项目所有者裁定 2026-11-26）：需求来源类型以 SALES_ORDER 为准。SALES-ORDER 是历史
+// 写法（迁移 0051 之前的行与旧词表用过它），作为别名接受并归一存储为 SALES_ORDER——于是它和
+// SALES_ORDER 走同一条销售订单校验。存量行不改（无迁移），读取仍兼容两种写法。
+const normalizeDemandSource = (sourceType: string): string =>
+  sourceType === 'SALES-ORDER' ? 'SALES_ORDER' : sourceType;
 const company = (context: Context) => {
   if (!context.scopes.includes('COMPANY') && !context.scopes.includes('GROUP'))
     throw new DomainError('forbidden', 'MRP planning requires company scope');
@@ -99,20 +104,22 @@ export class PostgresMrpRepository extends PostgresMrpReadRepository {
   ) {
     return this.db.transaction(async (tx) => {
       company(context);
+      // 别名先归一，再校验、落库与计算指纹：响应与审计证据里也是规范写法。
+      const demand = { ...input, sourceType: normalizeDemandSource(input.sourceType) };
       const row = (
         await tx.query<{ id: string }>(
           `INSERT INTO mrp_demand_signals(tenant_id,item_version_id,source_type,source_id,required_at,quantity,priority,created_by,canonical_hash)
            SELECT $1,v.id,$3,$4,$5,$6,$7,$8,$9 FROM manufacturing_item_versions v WHERE v.id=$2 AND v.tenant_id=$1 AND v.status='PUBLISHED' AND ($3<>'SALES_ORDER' OR EXISTS(SELECT 1 FROM sales_orders source WHERE source.id=$4 AND source.tenant_id=$1 AND source.status='RELEASED')) RETURNING id`,
           [
             context.actor.companyId,
-            input.itemVersionId,
-            input.sourceType,
-            input.sourceId,
-            input.requiredAt,
-            input.quantity,
-            input.priority,
+            demand.itemVersionId,
+            demand.sourceType,
+            demand.sourceId,
+            demand.requiredAt,
+            demand.quantity,
+            demand.priority,
             context.actor.employeeId,
-            hash(input),
+            hash(demand),
           ],
         )
       ).rows[0];
@@ -121,7 +128,7 @@ export class PostgresMrpRepository extends PostgresMrpReadRepository {
           'conflict',
           'MRP demand requires a published item version and a valid declared source',
         );
-      const result = json({ id: row.id, canonicalHash: hash(input), ...input });
+      const result = json({ id: row.id, canonicalHash: hash(demand), ...demand });
       await evidence(
         tx,
         'mrp-demand.created',

@@ -77,8 +77,10 @@ describe.each([
         "INSERT INTO manufacturing_boms(id,tenant_id,code,name,product_item_id,created_by) VALUES($1,$2,'BOM-1','BOM',$3,$4)",
         [bom, company, finishedItem, employee],
       );
+      // TD-MFG-014：已发布版本的子行不可变（迁移 0078），行项必须在发布之前落到草稿上。
+      // 夹具改为「建草稿版本 → 插入行项 → 发布」，端态与原先相同（已发布版本 + 一行组件）。
       await db.query(
-        "INSERT INTO manufacturing_bom_versions(id,tenant_id,bom_id,version,product_item_version_id,status,output_quantity,effective_at,canonical_hash,published_at,created_by) VALUES($1,$2,$3,1,$4,'PUBLISHED',$6,now(),repeat('c',64),now(),$5)",
+        "INSERT INTO manufacturing_bom_versions(id,tenant_id,bom_id,version,product_item_version_id,status,output_quantity,effective_at,canonical_hash,created_by) VALUES($1,$2,$3,1,$4,'DRAFT',$6,now(),repeat('c',64),$5)",
         [bomVersion, company, bom, finishedVersion, employee, outputQuantity],
       );
       await db.query(
@@ -86,16 +88,24 @@ describe.each([
         [company, bomVersion, materialVersion],
       );
       await db.query(
+        "UPDATE manufacturing_bom_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
+        [bomVersion, company],
+      );
+      await db.query(
         "INSERT INTO manufacturing_routings(id,tenant_id,code,name,product_item_id,created_by) VALUES($1,$2,'RT-1','Routing',$3,$4)",
         [routing, company, finishedItem, employee],
       );
       await db.query(
-        "INSERT INTO manufacturing_routing_versions(id,tenant_id,routing_id,version,product_item_version_id,status,effective_at,canonical_hash,published_at,created_by) VALUES($1,$2,$3,1,$4,'PUBLISHED',now(),repeat('d',64),now(),$5)",
+        "INSERT INTO manufacturing_routing_versions(id,tenant_id,routing_id,version,product_item_version_id,status,effective_at,canonical_hash,created_by) VALUES($1,$2,$3,1,$4,'DRAFT',now(),repeat('d',64),$5)",
         [routingVersion, company, routing, finishedVersion, employee],
       );
       await db.query(
         "INSERT INTO manufacturing_routing_operations(id,tenant_id,routing_version_id,sequence,operation_code,name,work_center_code,setup_minutes,run_minutes_per_unit,instructions) VALUES($1,$2,$3,10,'MAKE','Make','WC-1',1,1,'{}')",
         [routingOperation, company, routingVersion],
+      );
+      await db.query(
+        "UPDATE manufacturing_routing_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
+        [routingVersion, company],
       );
       await db.query(
         "INSERT INTO inventory_locations(id,tenant_id,code,name,location_type) VALUES($1,$2,'PROD-1','Production','PRODUCTION')",
@@ -310,9 +320,22 @@ describe.each([
       expect(Number(balance.rows[0]?.quantity)).toBe(12);
     });
     it('TD-COST-003: aggregates one actual material movement once across duplicate BOM lines', async () => {
+      // TD-MFG-014：已发布的第 1 版不能再追加行项。重复组件行改为经「新草稿 → 发布」建立：
+      // 同一 BOM 的第 2 版带两行相同组件，发布时间晚于第 1 版，成本计算选用的就是它
+      // （production-cost-repositories：ORDER BY published_at DESC LIMIT 1），场景与原先相同。
+      const duplicateBomVersion = randomUUID();
       await db.query(
-        'INSERT INTO manufacturing_bom_lines(tenant_id,bom_version_id,line_number,component_item_version_id,quantity) VALUES($1,$2,2,$3,1)',
-        [company, bomVersion, materialVersion],
+        "INSERT INTO manufacturing_bom_versions(id,tenant_id,bom_id,version,product_item_version_id,status,output_quantity,effective_at,canonical_hash,created_by) VALUES($1,$2,$3,2,$4,'DRAFT',$5,now(),repeat('e',64),$6)",
+        [duplicateBomVersion, company, bom, finishedVersion, outputQuantity, employee],
+      );
+      for (const lineNumber of [1, 2])
+        await db.query(
+          'INSERT INTO manufacturing_bom_lines(tenant_id,bom_version_id,line_number,component_item_version_id,quantity) VALUES($1,$2,$3,$4,1)',
+          [company, duplicateBomVersion, lineNumber, materialVersion],
+        );
+      await db.query(
+        "UPDATE manufacturing_bom_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
+        [duplicateBomVersion, company],
       );
       const order = await production.create(
         {

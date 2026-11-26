@@ -607,6 +607,48 @@ describe('manufacturing-boms fastify bridge track', () => {
     expect(denied?.statusCode).toBe(403);
   });
 
+  it('PUT publish 把「组件未发布」的 conflict 变成 409 且消息原样；其它数据库异常仍是 500（TD-MFG-015）', async () => {
+    const message =
+      '无法发布 BOM：以下组件尚未发布：RAW-D（草稿纱）。请先发布这些组件版本，再发布 BOM';
+    const blocked = await dispatchFastifyRouteGroup(
+      requestFor({
+        method: 'PUT',
+        pathname: `/api/v1/manufacturing-boms/${row.id}/publish`,
+        body: {},
+      }),
+      scopeFor(
+        repository({ publish: vi.fn().mockRejectedValue(new DomainError('conflict', message)) }),
+      ),
+    );
+    expect(blocked?.statusCode).toBe(409);
+    expect(errorOf(blocked)).toEqual({ code: 'conflict', message, correlationId: 'corr-1' });
+    // 触发器的其它拒绝（产品未发布等）沿用本端点既有做法：不映射，仍是 500，不回显数据库消息。
+    const crashed = await dispatchFastifyRouteGroup(
+      requestFor({
+        method: 'PUT',
+        pathname: `/api/v1/manufacturing-boms/${row.id}/publish`,
+        body: {},
+      }),
+      scopeFor(
+        repository({
+          publish: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(
+                new Error(
+                  'BOM publication requires published product, component, and substitute versions',
+                ),
+                { code: 'P0001' },
+              ),
+            ),
+        }),
+      ),
+    );
+    expect(crashed?.statusCode).toBe(500);
+    expect(errorOf(crashed).code).toBe('internal_error');
+    expect(errorOf(crashed).message).toBe('Internal server error');
+  });
+
   it('权限负例：无 bom:manage 的 POST/PUT 403；无读权限的 GET 403；依赖缺失 503', async () => {
     const read = {
       authorization: {

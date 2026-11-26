@@ -34,7 +34,7 @@ export async function fixedMrpInputMatches(client, companyId) {
          AND bool_and(sku='FG-KT-PRO-50' AND (
            (required_at='2026-08-20' AND quantity=100 AND source_type='FROZEN-DEMO'
              AND source_id IN(SELECT id FROM customers WHERE tenant_id=$1 AND customer_number='KT-P1-DEMO-001')) OR
-           (required_at='2026-11-15' AND quantity=8000 AND source_type='SALES-ORDER'
+           (required_at='2026-11-15' AND quantity=8000 AND source_type IN('SALES_ORDER','SALES-ORDER')
              AND source_id IN(SELECT id FROM sales_orders WHERE tenant_id=$1 AND order_number='SO-KT-P1-DEMO'))
          )) FROM demands),false) "demandInputMatches",
        coalesce((SELECT count(*)=6

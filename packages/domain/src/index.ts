@@ -325,21 +325,38 @@ export function calculateBasisPoints(numerator: string, denominator: string): nu
     throw new DomainError('invalid_request', 'Basis-point result is outside supported range');
   return Number(result);
 }
-export function canonicalize(value: unknown): string {
+/**
+ * 规范化时如何渲染 number：返回它的规范文本，或抛出 DomainError 表示这类数值不被接受。
+ * 不同调用方对「接受哪些数值」的口径可以不同；字符串、布尔、数组与对象的规则只有一份。
+ */
+export type CanonicalNumberPolicy = (value: number) => string;
+
+/**
+ * 规范化序列化（结构只此一份）：null / 布尔 / 字符串取 JSON 文本，数组保持顺序，对象按键名
+ * 排序，数值交给 numberPolicy。需要另一种数值口径的调用方传入自己的策略，不要复制这个函数。
+ */
+export function canonicalizeWith(numberPolicy: CanonicalNumberPolicy, value: unknown): string {
   if (value === null || typeof value === 'boolean' || typeof value === 'string')
     return JSON.stringify(value);
-  if (typeof value === 'number') {
-    if (!Number.isSafeInteger(value))
-      throw new DomainError('invalid_request', 'Canonical numeric inputs must be safe integers');
-    return String(value);
-  }
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+  if (typeof value === 'number') return numberPolicy(value);
+  if (Array.isArray(value))
+    return `[${value.map((item) => canonicalizeWith(numberPolicy, item)).join(',')}]`;
   if (typeof value === 'object')
     return `{${Object.entries(value as Record<string, unknown>)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalize(item)}`)
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalizeWith(numberPolicy, item)}`)
       .join(',')}}`;
   throw new DomainError('invalid_request', 'Unsupported canonical value');
+}
+
+/** 严格口径（各域幂等绑定与内容指纹的既有口径）：数值只接受安全整数。 */
+const safeInteger: CanonicalNumberPolicy = (value) => {
+  if (!Number.isSafeInteger(value))
+    throw new DomainError('invalid_request', 'Canonical numeric inputs must be safe integers');
+  return String(value);
+};
+export function canonicalize(value: unknown): string {
+  return canonicalizeWith(safeInteger, value);
 }
 
 /** The single monetary representation used by the E11-E17 boundary. */
