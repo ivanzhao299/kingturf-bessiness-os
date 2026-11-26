@@ -10,6 +10,7 @@ import { qtcOperationalReadRoutes } from '../src/routes/qtc-operational-reads.js
 import { dispatchRoutes } from '../src/routes/types.js';
 import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.js';
 import { ownedCommercialGraph } from './fixtures/owned-commercial-graph.js';
+import { copyReleasedOrder } from './fixtures/released-order-copy.js';
 
 // FIN-1：应收 additive 只读方法（listArPage / findArOpenItem）与桥轨端点的真库契约——SQL 仅在此处
 // 真正执行（TD-TEST-022：仓储替身执行不到 SQL）。
@@ -609,9 +610,18 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
         { authorization: authz, dependencies: dependencies(), correlationId },
       );
     const documentNumber = `INV-FIN-${randomUUID().slice(0, 8)}`;
+    // TD-FIN-003：演示图订单已被夹具全额开票，对它再开票现在被前置校验拒绝（见
+    // ar-invoice-cap-postgres.integration.test.ts）。本例验证的是过账后 201 并可读回，改用同一
+    // 商业图复制出的未开票订单；下方订单号断言随之由 AUTH-ORDER 换成复制订单的订单号。
+    const spareOrderNumber = 'FIN-SPARE-ORDER';
+    const spare = await copyReleasedOrder(
+      state().db,
+      { orderId: state().graph.orderId, companyId: state().context.actor.companyId },
+      spareOrderNumber,
+    );
     const created = await post({
       customerId: customerA,
-      salesOrderId: state().graph.orderId,
+      salesOrderId: spare,
       documentNumber,
       documentType: 'INVOICE',
       currency: 'CNY',
@@ -626,7 +636,7 @@ describe('FIN-1 AR open item page and detail real PostgreSQL contracts', () => {
       {
         id: createdId,
         documentNumber,
-        orderNumber: 'AUTH-ORDER',
+        orderNumber: spareOrderNumber,
         originalAmount: '12.340000',
         appliedAmount: '0.000000',
         remainingAmount: '12.340000',
