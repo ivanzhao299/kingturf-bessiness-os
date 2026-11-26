@@ -2,7 +2,8 @@ import { el } from '../../dom';
 import type { OperationsViewContext } from '../operations-view-ports';
 import { perView } from './console-choices';
 import { finReadPage } from './fin-host-kit';
-import { BALANCES, LOCATIONS, ORDERS, workOrderChoices } from './inv-data';
+import { BALANCES, LOCATIONS, MOVEMENT_SOURCES, ORDERS, workOrderChoices } from './inv-data';
+import { finText } from './fin-kit';
 import type { InventoryPorts } from './inv-state';
 
 export function appendInventoryConsole(
@@ -29,6 +30,19 @@ export function appendInventoryConsole(
         typeof globalThis.location === 'undefined' ? '' : globalThis.location.hash,
       ),
       orders: perView(controller.views, ORDERS, workOrderChoices),
+      loadMovementSources: async () => {
+        const orders = controller.views.get(ORDERS);
+        const complete = orders?.every((row) =>
+          ['id', 'order_number', 'state'].every((field) => typeof row[field] === 'string'),
+        );
+        if (permissions.has('production:read') && orders && complete)
+          return workOrderChoices(orders);
+        const page = await finReadPage(controller.api.get, MOVEMENT_SOURCES, {});
+        return page.items.map((row) => ({
+          value: finText(row, 'value'),
+          label: finText(row, 'label'),
+        }));
+      },
       actors: new Map(
         controller.employees.map((employee) => [
           employee.id,

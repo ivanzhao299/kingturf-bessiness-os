@@ -95,6 +95,7 @@ export function MovementForm({
 export function InventoryDetail({
   balance,
   moving,
+  sourcesLoading,
   move,
   cancel,
   close,
@@ -106,6 +107,7 @@ export function InventoryDetail({
 }: Readonly<{
   balance: FinRow;
   moving: boolean;
+  sourcesLoading: boolean;
   move: (() => void) | undefined;
   cancel: () => void;
   close: () => void;
@@ -149,7 +151,11 @@ export function InventoryDetail({
         ) : null}
         {moving ? (
           <>
-            <MovementForm balance={balance} error={error} orders={orders} submit={onSubmit} />
+            {sourcesLoading ? (
+              <p role="status">正在读取业务来源…</p>
+            ) : (
+              <MovementForm balance={balance} error={error} orders={orders} submit={onSubmit} />
+            )}
             <button type="button" class="secondary" onClick={cancel}>
               返回流水
             </button>

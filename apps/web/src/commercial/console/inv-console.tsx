@@ -259,12 +259,11 @@ function InventoryView({ state }: Readonly<{ state: State }>) {
         <InventoryDetail
           balance={selected}
           moving={state.moving.value}
+          sourcesLoading={state.sourcesLoading.value}
           move={
             canWrite
               ? () => {
-                  state.moving.value = true;
-                  state.error.value = '';
-                  state.notice.value = '';
+                  void state.startMovement();
                 }
               : undefined
           }
@@ -275,7 +274,7 @@ function InventoryView({ state }: Readonly<{ state: State }>) {
           close={() => {
             state.select(null);
           }}
-          orders={state.ports.orders()}
+          orders={state.moving.value ? state.movementSources.value : state.ports.orders()}
           actors={state.ports.actors}
           error={state.error.value}
           notice={state.notice.value}
