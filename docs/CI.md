@@ -58,6 +58,8 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 ## 5. 变更历史
 
+2026-11-26，发布步骤摘要修复（TD-GATE-006）：`release.yml` 与 `release-images.yml` 的「Emit immutable digests」步骤原以无引号 heredoc（`cat >> "$GITHUB_STEP_SUMMARY" <<EOF`）写 Markdown 摘要，反引号包住的镜像摘要被 bash 当作命令替换执行，摘要值为空且日志出现 `command not found`（job 退出码与 `GITHUB_OUTPUT` 不受影响）。两处改照 post 任务「Publish release summary」已有的 printf 写法，步骤名、id、`GITHUB_OUTPUT` 两行、env、needs、job 依赖不变；新增静态守卫 `tests/workflows/step-summary-heredoc.test.mjs` 接入 `test:release-guardrails`（`ci.yml` 未改）。本地 bash 探针验证修复后脚本三行摘要正确、stderr 干净，基线 `4a93003` 旧写法对照复现缺陷；线上效果待下一次发布验证。见[发布步骤摘要修复证据](evidence/gate-006-release-summary-2026-11-26.md)。
+
 2026-11-20，A-F3c 发布镜像扫描与 SBOM（审计 A3 P1-4）：`release-images.yml` 双镜像 build-push 追加 `sbom: true` + `provenance: mode=max`（顶部权限新增 id-token:write + attestations:write）；推送后、digest 输出前以 aquasecurity/trivy-action（v0.36.0 full SHA 钉扎）按 digest 扫 HIGH,CRITICAL（exit 1 断言），并生成 CycloneDX SBOM 与扫描表随 step summary 展示。发布语义不变：扫描失败不回滚已推送构建，但 run 结论置败，recover 通道（要求 release-images conclusion=success）无法消费未过检镜像。tag→digest 由 image index 解析，控制脚本 oci_image_transport.py 原生支持 index 摘要。
 
 2026-11-20，A-F3b SAST 接线（审计 A3 P1-3）：新增 `.github/workflows/codeql.yml`——CodeQL（workflow 化 Default Setup：init→analyze 矩阵），覆盖 javascript-typescript 与 actions 双语言，pull_request + push(main) 触发，permissions 最小化为 contents:read + security-events:write。选 CodeQL 而非 semgrep 免费档的理由：本仓库为 public repo，CodeQL 对公开仓库免费可用；若仓库转私有且无 GHAS，SARIF 上传将失败，届时在此记录替代方案决策。github/codeql-action 钉 v4.39.3 full SHA（A-F3a 规则）。
@@ -72,6 +74,7 @@ Harness 施工已归档；本项目是纯 Web monorepo，非 Tauri，不生成�
 
 | 日期       | 变更                                                                                                        | 原因                                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-11-26 | 发布摘要步骤无引号 heredoc 改 printf（TD-GATE-006）                                                         | 反引号在无引号 heredoc 内被 bash 当作命令替换执行，摘要值为空                                         |
 | 2026-11-24 | ci.yml quality 任务超时 15 → 30 分钟（TD-GATE-004）                                                         | 套件耗时超过上限：推送 CI 在全部 API 与 Web 测试通过后被超时终止，main 最新提交的检查显示为 cancelled |
 | 2026-11-24 | 本地 ci:local 支持独立 worktree + 一次性 PG 容器并行运行；发布演练按 DATABASE_URL 端口解析容器（`14d8e74`） | 并发 CI 的演练库互相删除、`DATABASE_URL` 与演练容器跨实例混用（TD-TEST-021）                          |
 | 2026-11-20 | A-F3c：release-images 加 trivy HIGH+ 拦截、SBOM/provenance=max                                              | 审计 A3 P1-4：发布镜像无 CVE 扫描/SBOM/provenance attestation                                         |
