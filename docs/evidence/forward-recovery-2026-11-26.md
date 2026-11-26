@@ -436,3 +436,9 @@ TD-REL-016 在本独立批交付时为**本机修复与验证完成，待主协�
 以该提交固定导出控制，再调度相同R32：[run45820243736／attempt1](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45820243736)，publish job139910346270，**整体success**。真实双HIGH/CRITICAL扫描、原OCI导出和artifact留存完成。artifact15118360718已实际下载，ZIP服务端digest与原字节相同；恰五份普通文件与provenance的R/M/E/run/attempt及四原件hash全等。固定原OCI verifier通过全部可达blob；源bundle严格两refs，L≤R≤M且R真实81 SQL与清单原字节全等。精确tar/source/ZIP摘要、双镜像digest与原始回执见[集成验收§9.1](ux-wave-integration-2026-11-26.md#91-成功原-artifact-的字节与离线来源核对)。证据根 `integration-artifacts/image-builds-32e705a-control-1f6f3de/`，原失败目录保持不变。
 
 **导出阻断已解除**，本机旧红新绿与真实GHR后继均有回执。成功原始来源仍须进入后继严格材料门；尚无两层真实恢复、R认证写、最终B标准smoke／production浏览器或生产发布回执，不据本项通过解除其余门禁。
+
+## 15. 标准 smoke 外部夹具的执行边界
+
+原标准helper不建库／迁移，需在既有受控outer／inner daemon内另建独立81-schema测试PG，保留L/77供真实恢复。R与最终B各自消费同一原tar／双digest绑定的成功来源，各有独立smoke回执；不能把manual中的内部B探针或R认证写报告填成B标准smoke。
+
+新外部入口初稿74712ee8经独立静态审查发现按名trap、清理未确认及取消出口阻断，尚未接受或实跑。主协调已裁定通过仅限helper的真实Docker完整ID策略代理与真实Python `-I -B` 启动器收口，并要求拒绝／未确认否决成功、逐资源收据与PG finally；原C0 helper／控制／冻结driver字节保持。精确输入seal、初稿hash、原始静态证据与执行约束见[集成验收§12](ux-wave-integration-2026-11-26.md#12-标准-smoke-的隔离夹具与执行裁定)。此处是执行前边界记录，当前不含R/B smoke或两层恢复PASS。

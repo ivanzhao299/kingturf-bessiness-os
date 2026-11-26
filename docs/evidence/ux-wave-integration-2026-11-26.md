@@ -227,3 +227,15 @@ TD-REL-016的实际导出阻断已解除，成功原始来源已取得；尚未�
 对已推送检查点1f的GitHub状态只读核对：CI [run45818647493](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45818647493) 与CodeQL [run45818647511](https://github.com/ivanzhao299/kingturf-bessiness-os/actions/runs/45818647511) 均completed/success。原查询和UTC回执在 `integration-artifacts/remote-checks-1f6f3de/`；不外推为后继新提交的检查结果。
 
 **2026-11-26 12:53:04 UTC**，公开GET `https://erp.kingturf.cn/health`、`/ready`、`/version` 均HTTP200，前两者分别为status=ok、ready；version仍为L `5dc88e5c922ff731e2cfeb949b28c5cd8c333032`、environment=production、builtAt=`application-45609177419-1`。原body及摘要在 `integration-artifacts/public-baseline-20261126T125304Z/`。观察范围仅为未登录公开读取，不能代替生产登录态或数据库／迁移检查，尚未执行生产发布。
+
+## 12. 标准 smoke 的隔离夹具与执行裁定
+
+主协调依据既有技术审查／发布授权，为真实执行标准helper准备独立外部夹具，原入口为固定C0 **`1f6f3de8b5bbd79fb1c2a6bb6ccc82963099aa66`** 的 `scripts/smoke_release_images.sh`（SHA-256 `0e6a66512141d3b452f7aceda3b2722a8f6836231a0a523a799e6dc689e7a10c`）与原OCI importer（`2c63fc64a29866e6b57124630d6937d492cfb476ab97d909f3cf45dff5cab016`）。原helper不建库／迁移，只读取实际transport/release并使用调用环境中的DATABASE_URL；其历史72-schema文案保留，实际必须由独立CLI／完整登记证明81。
+
+新夹具仅在已绑定的 `e2e-harness-forward-recovery` outer／独立inner daemon内操作本次自有资源：独立PG使用已核L镜像ID、全新tmpfs及随机合成口令，仅监听inner loopback的独立15433端口，库名含test；3000／8080供helper，15432只供OCI临时导入。实际选定API镜像先执行只读实例／库／角色／端口交叉证明、原Node guard／migrate／status，核81项name/checksum及applied，再调用原helper。L三服务仅按既定完整ID作前后只读身份与77登记（含applied_at）对照。
+
+外部初稿 `/home/jinhuit/Kingturf/kingturf-coord/bin/run-original-image-smoke.py`、SHA-256 **`74712ee895f9c43db2fa106d7239391d979402940a3821a30a82b52c9ddc7711`** 经独立静态审查被阻断，尚未执行fixture或迁移：原helper的按名EXIT trap在身份异常后仍可能删除替换对象；PG名字消失／清理未确认仍可能冒绿；另有child清理异常跳过PG分支及SIGTERM绕过finally的出口。该版本源码与静态证据保留于 `wave4/original-image-smoke-launcher-artifacts/authoring-v2/`，不作已验收入口。
+
+主协调裁定仅在新夹具中收口：helper进程使用窄的真实Docker策略代理，首次真实run返回的完整CID排他绑定，原按名删除转为经身份核验的该CID操作；未知替换不认领，所有拒绝／未确认独立持久记录并否决成功，不能被原trap的 `|| true` 吞掉。PG按原绑定完整ID实际确认不存在，各资源分开收据且PG进入独立finally；worker的可控SIGTERM进入统一teardown，无法确认送达／强杀不冒称已清理。读取物料的helper子Python经可信启动器使用真实绝对解释器 `-I -B`，工作目录为可信`/`。所有Docker／HTTP／CLI仍须真实执行；原helper、五固定控制和四冻结driver字节保持。此为测试资源与解释器的执行约束，不能用替身结果替代真实R/B smoke。
+
+R的真实输入已单独封存为 `wave4/original-image-smoke-launcher-inputs/R-45820243736.json`，原字节SHA-256 `a8adc07d701f095aff01522503dc0554f229259d0d263fab1ffed7f38d7fc9c9`，绑定第9节成功原物料；seal仅是输入完整性，不是迁移／应用批准。新入口须待最终冻结源码、边界验证与独立复核通过后，由主协调实际运行。当前没有R预验、B标准smoke或两层恢复PASS；最终B使用自己的成功原物料和独立回执。
