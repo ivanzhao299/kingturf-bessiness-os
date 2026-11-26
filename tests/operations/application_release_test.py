@@ -278,7 +278,7 @@ class BackupStopIdentityTest(unittest.TestCase):
         host.setUp()
         return host
 
-    def run_backup(self, host, *, handover=False, checkpoint_hook=None, stop_hook=None, import_hook=None):
+    def run_backup(self, host, *, handover=False, checkpoint_hook=None, stop_hook=None, import_hook=None, cli=False, expected_legacy=0):
         import copy
         import forward_recovery_test as fixtures
         release = fixtures.ar
@@ -314,10 +314,69 @@ class BackupStopIdentityTest(unittest.TestCase):
              mock.patch.object(release, 'checkpoint', side_effect=checkpoint), \
              mock.patch.object(release, 'command', side_effect=command), \
              mock.patch.object(release, 'compose', side_effect=compose), \
-             mock.patch.object(release, 'assert_drained', side_effect=RuntimeError('verified stop boundary')) as drained:
-            with self.assertRaises(RuntimeError):
-                release.backup(host.bundle)
+             mock.patch.object(release, 'assert_drained', side_effect=RuntimeError('verified stop boundary')) as drained, \
+             mock.patch.object(release, 'recover_previous_application') as legacy, \
+             mock.patch.object(sys, 'argv', ['application_release.py', 'backup', str(host.bundle)]):
+            import contextlib, io
+            with self.assertRaises(RuntimeError), contextlib.redirect_stderr(io.StringIO()):
+                if cli:
+                    release.main()
+                else:
+                    release.backup(host.bundle)
+        self.assertEqual(legacy.call_count, expected_legacy, 'Only a confirmed stable source may retain legacy failure recovery')
         return drained.call_count
+
+    def test_cli_stop_rejection_retains_fence_without_entering_legacy_restart(self):
+        for at_dispatch in (False, True):
+            for different_image in (False, True):
+                with self.subTest(at_dispatch=at_dispatch, different_image=different_image):
+                    host = self.scene()
+                    try:
+                        def replace():
+                            host.replace_api()
+                            if different_image:
+                                host.containers['api']['Image'] = 'sha256:'+'9'*64
+                                host.containers['api']['Config']['Image'] = 'unrelated@sha256:'+'9'*64
+                        self.run_backup(host, cli=True,
+                                        checkpoint_hook=None if at_dispatch else replace,
+                                        stop_hook=replace if at_dispatch else None)
+                        self.assertNotIn(('stopped-id', '9'*64), host.stops())
+                        self.assertFalse(any(e[0] == 'compose' and e[1][0] == 'up' for e in host.events))
+                        self.assertTrue(host.containers['api']['State']['Running'])
+                        self.assertEqual(host.fence(), 'enabled')
+                        self.assertEqual(json.loads((host.bundle / 'application-state.json').read_bytes())['phase'], 'BACKUP_STOP_UNCONFIRMED')
+                    finally:
+                        host.doCleanups()
+
+    def test_cli_scope_and_environment_drift_do_not_enter_legacy_restart(self):
+        for kind in ('scope', 'environment'):
+            with self.subTest(kind=kind):
+                host = self.scene()
+                try:
+                    def change():
+                        if kind == 'scope':
+                            host.containers['api']['Config']['Labels']['com.docker.compose.project'] = 'unrelated'
+                        else:
+                            host.containers['api']['Config']['Env'].append('DATABASE_URL=synthetic-drift')
+                    self.run_backup(host, cli=True, checkpoint_hook=change)
+                    self.assertEqual(host.stops(), [])
+                    self.assertEqual(host.fence(), 'enabled')
+                finally:
+                    host.doCleanups()
+
+    def test_cli_stable_source_keeps_ordinary_stop_and_drain_failure_recovery(self):
+        for ordinary_stop_failure in (False, True):
+            with self.subTest(ordinary_stop_failure=ordinary_stop_failure):
+                host = self.scene()
+                try:
+                    def command_failed():
+                        raise RuntimeError('controlled ordinary stop command failure')
+                    self.run_backup(host, cli=True, stop_hook=command_failed if ordinary_stop_failure else None,
+                                    expected_legacy=1)
+                    phase = json.loads((host.bundle / 'application-state.json').read_bytes())['phase']
+                    self.assertEqual(phase, 'STOPPING_API' if ordinary_stop_failure else 'API_STOPPED')
+                finally:
+                    host.doCleanups()
 
     def test_normal_backup_preserves_the_precheck_id_across_target_preparation(self):
         host = self.scene()

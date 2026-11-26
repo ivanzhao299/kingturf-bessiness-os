@@ -531,11 +531,21 @@ def backup(bundle):
     checkpoint(bundle,'STOPPING_API')
     # TD-REL-013: stop permission belongs to the verified snapshot, never the service name.
     api = next(c for c in containers if c['Name'] == '/'+PROJECT+'-api-1')
-    require_api_scope(api)
-    current = json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0]
-    require_api_scope(current)
-    images.require(current['Id'] == api['Id'] and current['Image'] == api['Image'] and current['Config']['Image'] == api['Config']['Image'] and current['Config']['Env'] == api['Config']['Env'], 'Backup API source changed before bound stop')
-    stop_bound_api(api['Id'], api['Image'])
+    def require_source(current):
+        require_api_scope(current)
+        images.require(current['Id'] == api['Id'] and current['Image'] == api['Image'] and current['Config']['Image'] == api['Config']['Image'] and current['Config']['Env'] == api['Config']['Env'], 'Backup API source changed before bound stop')
+    try:
+        require_api_scope(api)
+        require_source(json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0])
+        stop_bound_api(api['Id'], api['Image'])
+    except Exception:
+        try:
+            require_source(json.loads(command(['docker', 'inspect', PROJECT+'-api-1']))[0])
+        except Exception:
+            # Do not let main's unchanged legacy dispatch restart an unconfirmed source.
+            checkpoint(bundle, 'BACKUP_STOP_UNCONFIRMED')
+            set_forward_fence(bundle, True)  # Persisted only; the unknown runtime is not certified fenced.
+        raise
     checkpoint(bundle,'API_STOPPED')
     assert_drained()
     verify_unchanged(bundle)
