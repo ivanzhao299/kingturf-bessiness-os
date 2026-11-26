@@ -106,7 +106,7 @@ Docker Playwright前置当前停点：三项人裁已落R7，回环/自然Cookie
 - 门禁清单（各项触发时机/失败含义/修复指引）：`docs/GATES.md`
 - 可靠性与发布链路 runbook：`docs/RELIABILITY.md`
 - 质量评分（按域，可复算）：`docs/QUALITY_SCORE.md`
-- 施工规则（竣工后归档）：`docs/HARNESS-RULES.md`
+- 施工规则（已随竣工归档）：`docs/exec-plans/completed/harness-2026-10-21.md`（原 `docs/HARNESS-RULES.md`）
 - 历史 ADR / 工程规格 / 验收证据 / 任务档案：`docs/{adr,engineering,evidence,tasks}/`（归并策略待 D4 决策）
 
 ## 工作方式

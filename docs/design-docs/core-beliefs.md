@@ -26,7 +26,7 @@
 | 边界处解析数据形状 | SQL 一律参数化；前端 innerHTML 必过 `sanitizeBusinessDocumentHtml`；运行时边界校验正在补（TD-BOUND-001）                                                                                                                          |
 | 安全默认拒绝       | 授权 default-deny + SQL 级 DataScope（ADR-0004）；会话不透明 token + scrypt（ADR-0003）；不引入 JWT                                                                                                                               |
 | 业务对象不可变     | 报价/订单等台账只追加修订、不改历史（ADR-0007/0009/0010）；审计与事件走事务 outbox（ADR-0006）                                                                                                                                    |
-| 重构红线           | R1 行为守恒、R2 变更显式登记单独提交、R3 先护栏后动手、R4 不顺手修、R5 存疑不删、R7 不藏信息、R8 每步可回滚（全文见 `docs/HARNESS-RULES.md` §9，竣工后迁入本节）                                                                  |
+| 重构红线           | R1 行为守恒、R2 变更显式登记单独提交、R3 先护栏后动手、R4 不顺手修、R5 存疑不删、R7 不藏信息、R8 每步可回滚（全文见归档的 `docs/exec-plans/completed/harness-2026-10-21.md` §9，原 `docs/HARNESS-RULES.md`；迁入本节一事尚未做）  |
 | 反模式警戒         | 先动手后补计划、全仓大爆炸、重构混行为变更、无护栏重构、覆盖率门禁形同虚设、巨型入口文件、决策只留对话（清单全文见规则 §12）                                                                                                      |
 
 ## 术语
