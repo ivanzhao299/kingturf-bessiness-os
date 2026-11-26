@@ -367,3 +367,5 @@ API 原保存 `image/image.tar` SHA-256 为 `0f08d814184d44bc8767729035ac358f597
 最终源码白名单仅两份现有 Dockerfile；交付文档白名单为本证据、tech-debt-tracker 和 docs/index。`source-conservation-158baf69fecb.json`（原字节 SHA-256 `b77d640a5ffdb408621daf6557f494226e73cb988d1b4ca45e576f4b5ca4a342`）精确对账基线／最终 `158baf6` 冻结源码：整个 apps／packages、工作流、所有 package／锁文件、Compose 和 Nginx 配置的 Git 对象均相同；API 实际构建输入在最终冻结中也相同，SQL 已有上述镜像内 81 文件逐字节复核。旧 `source-conservation.json` 仍绑定 `69b8611`，作为历史保留，不覆盖；新回执另核 `69b8611→158baf6` 只有 Web Dockerfile 的 GNU 包／注释差异。所有者裁定首节原 4,761 字节 SHA-256 `58e30a61b3bf70b7c9e313d2b498140e9a14d814f5266da7d68d5823a4414830` 完全保留。
 
 新 R 仍由主协调在另树构造，要求业务源码与 L `5dc88e5c922ff731e2cfeb949b28c5cd8c333032` 保真，仅纳入已批准的 81 pin／SQL 与必要封装；本批未改旧 R、批准文件、恢复 driver、工作流或发布锁，未 push／上传／部署。真正 GHR 双镜像原物料、两层恢复、恢复后认证写和最终集成 CI 必须另行实跑；本机运行验证明确 `recovery_drill=false`，不能替代这些材料。
+
+主协调后继已将冻结源码和最终证据分别合入 `208e7af`／`3ef8a2e`；为同时保留第12节控制证据，本节在集成树改编号为13。新 R `32e705a9a835e577b528fd6ff6d72c06b449ca35` 已另树构造并以 `e19dfe1` 纳入集成祖先，相对原 R 恰两份已验收 Dockerfile，L 业务源码与81清单原字节相同；白名单与实际身份见[集成验收 §6](ux-wave-integration-2026-11-26.md#6-新-r-的运行封装修订与来源白名单)。当前新R原物料、真实恢复和最终放行仍待后继验收。
