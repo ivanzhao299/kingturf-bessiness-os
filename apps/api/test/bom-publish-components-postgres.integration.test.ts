@@ -11,6 +11,7 @@ import { PostgresManufacturingRepository } from '../src/manufacturing-repositori
 import type { authorizeQuery } from '../src/policy.js';
 import { dispatchFastifyRouteGroup } from '../src/routes/fastify/registry.js';
 import { manufacturingPublishRoutes } from '../src/routes/manufacturing-publish.js';
+import { ownedHttpApi } from './fixtures/owned-http-api.js';
 import { ownedPostgres } from './fixtures/owned-postgres.js';
 
 // TD-MFG-015（MG2）：BOM 发布要求组件全部已发布（与替代料一致）。迁移 0036 的发布守卫对组件
@@ -370,6 +371,72 @@ describe('TD-MFG-015 BOM publication requires every component to be published', 
       );
     }
   });
+
+  it('creates and publishes over real HTTP, returning a named 409 with no residues for draft components', async () => {
+    const fixture = state();
+    const http = await ownedHttpApi(fixture);
+    try {
+      const user = await http.user(fixture.employee, fixture.company);
+      await user.grant(['bom:manage', 'bom:read'], ['COMPANY']);
+      const snapshot = async () =>
+        (
+          await fixture.db.query<{
+            roots: number;
+            versions: number;
+            lines: number;
+            substitutes: number;
+            audit: number;
+            outbox: number;
+          }>(
+            `SELECT
+              (SELECT count(*)::int FROM manufacturing_boms WHERE tenant_id=$1) roots,
+              (SELECT count(*)::int FROM manufacturing_bom_versions WHERE tenant_id=$1) versions,
+              (SELECT count(*)::int FROM manufacturing_bom_lines WHERE tenant_id=$1) lines,
+              (SELECT count(*)::int FROM manufacturing_bom_substitutes WHERE tenant_id=$1) substitutes,
+              (SELECT count(*)::int FROM audit_events WHERE organization_id=$1) audit,
+              (SELECT count(*)::int FROM domain_event_outbox WHERE tenant_id=$1) outbox`,
+            [fixture.company],
+          )
+        ).rows[0];
+      const input = {
+        code: 'BM-HTTP-PUBLISH-BLOCKED',
+        name: '创建即发布',
+        productItemId: id(parts.product, 'itemId'),
+        productItemVersionId: id(parts.product),
+        outputQuantity: '1',
+        effectiveAt: date,
+        lines: [line(parts.raw, [parts.alternate]), line(parts.draft)],
+        publish: true,
+      };
+      const before = await snapshot();
+      const blocked = await user.request('/api/v1/manufacturing-boms', 'POST', input);
+      expect(await snapshot()).toEqual(before);
+      expect(blocked.status).toBe(409);
+      expect(await blocked.json()).toMatchObject({
+        error: { code: 'conflict', message: RELEASE_MESSAGE },
+      });
+      const accepted = await user.request('/api/v1/manufacturing-boms', 'POST', {
+        ...input,
+        code: 'BM-HTTP-PUBLISH-OK',
+        lines: [line(parts.raw, [parts.alternate]), line(parts.alternate)],
+      });
+      expect(accepted.status).toBe(201);
+      const result = (await accepted.json()) as JsonObject;
+      expect(result).toMatchObject({ code: 'BM-HTTP-PUBLISH-OK', status: 'PUBLISHED' });
+      expect(await statusOf(result)).toBe('PUBLISHED');
+      if (!before) throw new Error('Initial manufacturing snapshot missing');
+      expect(await snapshot()).toEqual({
+        roots: before.roots + 1,
+        versions: before.versions + 1,
+        lines: before.lines + 2,
+        substitutes: before.substitutes + 1,
+        audit: before.audit + 1,
+        outbox: before.outbox + 1,
+      });
+    } finally {
+      await http.close();
+    }
+  }, 30_000);
 
   it('turns the rejection into a 409 carrying the same message on both HTTP tracks', async () => {
     const correlationId = randomUUID();

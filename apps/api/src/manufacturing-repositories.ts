@@ -189,11 +189,13 @@ export class PostgresManufacturingRepository extends PostgresManufacturingVersio
       ).rows[0];
       if (!version) throw new Error('BOM version insert failed');
       await insertBomLines(tx, context.actor.companyId, version.id, input.lines);
-      if (input.publish)
+      if (input.publish) {
+        await assertComponentsPublished(tx, version.id, context);
         await tx.query(
           "UPDATE manufacturing_bom_versions SET status='PUBLISHED',published_at=now() WHERE id=$1 AND tenant_id=$2",
           [version.id, context.actor.companyId],
         );
+      }
       const result = json({
         id: version.id,
         bomId: bom.id,
