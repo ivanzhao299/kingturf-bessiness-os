@@ -97,20 +97,13 @@ export class PostgresWebsiteLeadIngestor {
   ): Promise<WebsiteLeadResult> {
     const companies = (
       await tx.query<{ id: string }>(
-        "SELECT id FROM organizations WHERE organization_type='COMPANY' AND active AND deleted_at IS NULL ORDER BY created_at,id LIMIT 2",
+        "SELECT id FROM organizations WHERE code=$1 AND organization_type='COMPANY' AND active AND deleted_at IS NULL LIMIT 2",
+        ['KINGTURF-PROD'],
       )
     ).rows;
-    if (companies.length !== 1)
-      throw new DomainError(
-        'conflict',
-        'Website lead integration requires exactly one active company',
-      );
-    const company = companies[0];
-    if (!company)
-      throw new DomainError(
-        'conflict',
-        'Website lead integration requires exactly one active company',
-      );
+    const [company] = companies;
+    if (!company || companies.length !== 1)
+      throw new DomainError('conflict', 'Website lead integration company is missing or ambiguous');
     const tenantId = company.id;
     await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
       `${tenantId}:${payload.externalRef}`,

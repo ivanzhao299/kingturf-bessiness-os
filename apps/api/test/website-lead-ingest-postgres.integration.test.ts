@@ -31,8 +31,8 @@ describe('website inquiry to CRM lead PostgreSQL acceptance', () => {
     database = new Database(scoped.toString());
     await migrate(database);
     await database.query(
-      "INSERT INTO organizations(id,code,name,organization_type) VALUES($1,'KT','King Turf','COMPANY')",
-      [companyId],
+      "INSERT INTO organizations(id,code,name,organization_type) VALUES($1,'KINGTURF-PROD','King Turf','COMPANY'),($2,'OTHER','Other company','COMPANY')",
+      [companyId, randomUUID()],
     );
   });
 
